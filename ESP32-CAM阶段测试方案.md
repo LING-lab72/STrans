@@ -156,6 +156,35 @@ arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32cam 路径\到\CameraWebServe
 arduino-cli monitor -p COM3 -c baudrate=115200
 ```
 
+本项目已准备 AP 模式测试固件，路径为：
+
+```text
+D:\codeproject\STrans\esp32_cam_test\CameraWebServerAP
+```
+
+编译并烧录：
+
+```powershell
+cd D:\codeproject\STrans\esp32_cam_test
+.\compile_upload_camera_ap.ps1 -Port COM3
+```
+
+如果上传报错 `Wrong boot mode detected` 或 `Failed to connect to ESP32`，说明 ESP32-CAM 没有进入下载模式。处理方式：
+
+1. 将 `IO0` 接 `GND`，或按住开发板/底板上的 `BOOT` / `IO0` 按键；
+2. 按一下 `RST` / `RESET`；
+3. 重新执行上传命令；
+4. 上传完成后断开 `IO0-GND`，再按一次 `RST` 正常启动。
+
+AP 模式固件启动后会创建热点：
+
+```text
+SSID: STrans-ESP32CAM
+Password: 12345678
+Camera page: http://192.168.4.1
+Stream URL: http://192.168.4.1:81/stream
+```
+
 ## 5. 浏览器功能测试
 
 假设串口输出 IP 为：
