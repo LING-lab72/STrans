@@ -28,6 +28,40 @@ esp32_cam_test/
 
 ## 快速测试
 
+### 前后端视频接入测试
+
+启动后端：
+
+```powershell
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+启动前端：
+
+```powershell
+cd frontend
+pnpm install
+pnpm dev
+```
+
+浏览器访问：
+
+```text
+http://localhost:5173
+```
+
+在页面右侧输入手机 IP 摄像头 App 提供的视频流地址，例如：
+
+```text
+http://手机IP:8080/video
+rtsp://手机IP:8554/live
+```
+
+也可以输入 `0` 测试电脑自带摄像头。
+
+### ESP32-CAM 测试
+
 安装 Python 依赖：
 
 ```powershell
