@@ -2,26 +2,28 @@ param(
     [string]$Port = "COM3",
     [int]$BaudRate = 115200,
     [int]$SerialSeconds = 15,
-    [int[]]$PortsToScan = @(80, 81)
+    [int[]]$PortsToScan = @(80, 81),
+    [switch]$ProbeArpPorts
 )
 
 $ErrorActionPreference = "Continue"
 
 Write-Host "== Serial devices =="
-Get-PnpDevice -Class Ports -ErrorAction SilentlyContinue |
-    Select-Object Status, FriendlyName, InstanceId |
-    Format-Table -AutoSize
+$serialDevices = Get-PnpDevice -Class Ports -ErrorAction SilentlyContinue |
+    Select-Object Status, FriendlyName, InstanceId
+$serialDevices | ForEach-Object {
+    Write-Host "$($_.Status)  $($_.FriendlyName)  $($_.InstanceId)"
+}
 
 Write-Host ""
 Write-Host "== Active IPv4 interfaces =="
 $activeInterfaces = Get-NetIPConfiguration |
     Where-Object { $_.IPv4Address -and $_.NetAdapter.Status -eq "Up" }
 
-$activeInterfaces |
-    Select-Object InterfaceAlias,
-        @{Name = "IPv4"; Expression = { ($_.IPv4Address | Select-Object -First 1).IPv4Address }},
-        @{Name = "PrefixLength"; Expression = { ($_.IPv4Address | Select-Object -First 1).PrefixLength }} |
-    Format-Table -AutoSize
+$activeInterfaces | ForEach-Object {
+    $addr = $_.IPv4Address | Select-Object -First 1
+    Write-Host "$($_.InterfaceAlias)  $($addr.IPv4Address)/$($addr.PrefixLength)"
+}
 
 Write-Host ""
 Write-Host "== Serial boot log: $Port @ $BaudRate =="
@@ -61,24 +63,29 @@ foreach ($line in $arpOutput) {
         $candidateIps += $matches[1]
     }
 }
-$candidateIps = $candidateIps | Sort-Object -Unique
+$candidateIps = @($candidateIps | Sort-Object -Unique)
 
-foreach ($ip in $candidateIps) {
-    foreach ($scanPort in $PortsToScan) {
-        $client = New-Object Net.Sockets.TcpClient
-        try {
-            $async = $client.BeginConnect($ip, $scanPort, $null, $null)
-            if ($async.AsyncWaitHandle.WaitOne(300, $false)) {
-                $client.EndConnect($async)
-                Write-Host "OPEN $ip`:$scanPort"
+if ($ProbeArpPorts) {
+    foreach ($ip in $candidateIps) {
+        foreach ($scanPort in $PortsToScan) {
+            $client = New-Object Net.Sockets.TcpClient
+            try {
+                $async = $client.BeginConnect($ip, $scanPort, $null, $null)
+                if ($async.AsyncWaitHandle.WaitOne(300, $false)) {
+                    $client.EndConnect($async)
+                    Write-Host "OPEN $ip`:$scanPort"
+                }
+            }
+            catch {
+            }
+            finally {
+                $client.Close()
             }
         }
-        catch {
-        }
-        finally {
-            $client.Close()
-        }
     }
+}
+else {
+    Write-Host "Skipped. Add -ProbeArpPorts to test ports on ARP candidates."
 }
 
 Write-Host ""

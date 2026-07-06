@@ -36,6 +36,29 @@ https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32
 
 国内网络如果下载失败，可优先换网络、开代理，或按 Espressif 文档选择带 `-cn` 后缀的包版本。
 
+如果希望让 Codex/命令行直接编译和烧录，建议额外安装 Arduino CLI：
+
+```powershell
+winget install -e --id ArduinoSA.CLI
+```
+
+安装完成后重新打开终端，验证：
+
+```powershell
+arduino-cli version
+```
+
+Arduino CLI 安装 ESP32 板卡包的命令：
+
+```powershell
+arduino-cli config init
+arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+```
+
+安装好之后，后续可直接通过命令行编译和烧录 ESP32-CAM。
+
 ### Python 侧
 
 建议使用 Python 3.10 或 3.11。
@@ -105,6 +128,33 @@ const char *password = "你的WiFi密码";
 
 7. 烧录完成后，断开 `IO0-GND` 并复位。
 8. 打开串口监视器，波特率 `115200`，记录输出的 IP 地址。
+
+## 4.1 Arduino CLI 烧录命令
+
+安装 Arduino CLI 后，可使用如下命令查看板卡和串口：
+
+```powershell
+arduino-cli board list
+arduino-cli board listall esp32
+```
+
+编译 CameraWebServer 示例时，推荐优先使用 Arduino IDE 自带示例或 ESP32 core 示例。若已经准备好本地 `.ino` 工程，可使用：
+
+```powershell
+arduino-cli compile --fqbn esp32:esp32:esp32cam 路径\到\CameraWebServer
+```
+
+烧录到当前检测到的 CH340 串口：
+
+```powershell
+arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32cam 路径\到\CameraWebServer
+```
+
+串口日志：
+
+```powershell
+arduino-cli monitor -p COM3 -c baudrate=115200
+```
 
 ## 5. 浏览器功能测试
 

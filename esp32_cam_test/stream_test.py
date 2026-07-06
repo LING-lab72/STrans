@@ -11,9 +11,18 @@ def main() -> int:
     parser.add_argument("--seconds", type=float, default=10.0, help="Test duration in seconds.")
     parser.add_argument("--out", default="esp32_cam_snapshot.jpg", help="Output snapshot path.")
     parser.add_argument("--show", action="store_true", help="Show live preview window.")
+    parser.add_argument("--open-timeout-ms", type=int, default=3000, help="Stream open timeout in milliseconds.")
+    parser.add_argument("--read-timeout-ms", type=int, default=3000, help="Frame read timeout in milliseconds.")
     args = parser.parse_args()
 
-    cap = cv2.VideoCapture(args.url)
+    backend = cv2.CAP_FFMPEG
+    params = [
+        cv2.CAP_PROP_OPEN_TIMEOUT_MSEC,
+        args.open_timeout_ms,
+        cv2.CAP_PROP_READ_TIMEOUT_MSEC,
+        args.read_timeout_ms,
+    ]
+    cap = cv2.VideoCapture(args.url, backend, params)
     if not cap.isOpened():
         print(f"ERROR: cannot open stream: {args.url}")
         return 1
