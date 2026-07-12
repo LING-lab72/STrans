@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import time
 from datetime import datetime
@@ -147,6 +148,24 @@ def box_overlap_of_smaller(a: list[int], b: list[int]) -> float:
     return intersection / smaller_area if smaller_area else 0.0
 
 
+def likely_same_vehicle_box(a: list[int], b: list[int]) -> bool:
+    """Match duplicate detector/tracker boxes without merging queued cars."""
+    if box_iou(a, b) >= 0.42 or box_overlap_of_smaller(a, b) >= 0.64:
+        return True
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    aw, ah = max(1, ax2 - ax1), max(1, ay2 - ay1)
+    bw, bh = max(1, bx2 - bx1), max(1, by2 - by1)
+    area_ratio = max(aw * ah, bw * bh) / max(1, min(aw * ah, bw * bh))
+    if area_ratio > 3.2:
+        return False
+    horizontal_overlap = max(0, min(ax2, bx2) - max(ax1, bx1)) / min(aw, bw)
+    center_distance = math.hypot((ax1 + ax2 - bx1 - bx2) / 2, (ay1 + ay2 - by1 - by2) / 2)
+    # A duplicate box tends to share the same lane centre and has only a small
+    # vertical offset. Adjacent queued cars are normally farther apart.
+    return horizontal_overlap >= 0.62 and center_distance <= min(ah, bh) * 0.46
+
+
 def suppress_duplicate_vehicle_detections(detections: list[DetectionBox]) -> list[DetectionBox]:
     """Keep one target when detector and plate fallback describe the same car."""
     kept: list[DetectionBox] = []
@@ -168,14 +187,12 @@ def suppress_duplicate_vehicle_detections(detections: list[DetectionBox]) -> lis
         for index, existing in enumerate(kept):
             existing_box = [int(value) for value in existing.bbox]
             same_plate = bool(candidate.plate and existing.plate and candidate.plate == existing.plate)
-            heavily_overlapped = (
-                box_iou(candidate_box, existing_box) >= 0.55
-                or box_overlap_of_smaller(candidate_box, existing_box) >= 0.78
-            )
+            same_track = candidate.track_id is not None and candidate.track_id == existing.track_id
+            heavily_overlapped = likely_same_vehicle_box(candidate_box, existing_box)
             # Plate-derived boxes intentionally surround a plate. A tracked
             # vehicle that contains that plate must win, even when their IoU is
             # low because one box is much tighter than the other.
-            if same_plate or heavily_overlapped:
+            if same_track or same_plate or heavily_overlapped:
                 duplicate_index = index
                 break
         if duplicate_index is None:
@@ -377,15 +394,46 @@ class LocalModelService:
         return recognize(sharpened, scale)
 
     def _detect_vehicle_crop_plate(self, crop: np.ndarray) -> list[dict[str, Any]]:
-        candidates = self.detect_plates(crop, upscale_small=True)
-        if candidates or crop.size == 0:
-            return candidates
-        # Sandtable rear plates are normally on the lower half of a vehicle.
-        # This tighter fallback removes roof racks and body texture that can
-        # distract OCR on close vehicles with strong reflections.
+        if crop.size == 0:
+            return []
+        # A detector box includes roof racks, windshields and shadows. On the
+        # sandtable the rear plate sits in the centre-lower area, so collect
+        # OCR hypotheses from several plausible plate bands instead of taking
+        # the first full-car result (which can be a confident-looking wrong
+        # string).
         height, width = crop.shape[:2]
-        focus = crop[int(height * 0.34):int(height * 0.93), int(width * 0.04):int(width * 0.96)]
-        return self.detect_plates(focus, upscale_small=True)
+        regions = [
+            (crop[int(height * 0.30):int(height * 0.98), int(width * 0.02):int(width * 0.98)], 1.30),
+            (crop[int(height * 0.38):int(height * 0.84), int(width * 0.04):int(width * 0.96)], 1.15),
+            (crop, 1.00),
+        ]
+        votes: dict[str, dict[str, Any]] = {}
+        for region, weight in regions:
+            if region.size == 0:
+                continue
+            for candidate in self.detect_plates(region, upscale_small=True):
+                text = str(candidate.get("text", ""))
+                if not text:
+                    continue
+                current = votes.setdefault(
+                    text,
+                    {**candidate, "_vote_score": 0.0, "_vote_count": 0},
+                )
+                current["_vote_score"] += weight
+                current["_vote_count"] += 1
+                if float(candidate.get("confidence", 0.0)) > float(current.get("confidence", 0.0)):
+                    current.update(candidate)
+        if not votes:
+            return []
+        return sorted(
+            votes.values(),
+            key=lambda item: (
+                float(item.get("_vote_score", 0.0)),
+                int(item.get("_vote_count", 0)),
+                float(item.get("confidence", 0.0)),
+            ),
+            reverse=True,
+        )
 
     def _memory_key(self, camera_id: str, track_id: int | None, bbox: list[int]) -> str:
         if track_id is not None:
@@ -420,31 +468,46 @@ class LocalModelService:
         crop: np.ndarray,
         stream_mode: bool,
         frame_counter: int,
+        allow_ocr: bool = True,
     ) -> dict[str, Any] | None:
         key = self._memory_key(camera_id, track_id, bbox)
         state = self._track_plate_memory.setdefault(
             key,
-            {"last_run": -100, "observations": [], "confirmed": None, "expires_at": 0},
+            {"last_run": -100, "observations": [], "confirmed": None, "latest": None, "expires_at": 0, "candidate_expires_at": 0},
         )
-        interval = 3 if stream_mode else 1
-        should_run = crop.size and frame_counter - int(state["last_run"]) >= interval
+        interval = 2 if stream_mode else 1
+        should_run = allow_ocr and crop.size and frame_counter - int(state["last_run"]) >= interval
         if should_run:
             state["last_run"] = frame_counter
             candidates = self._detect_vehicle_crop_plate(crop)
             if candidates:
-                candidate = max(candidates, key=lambda item: float(item.get("confidence", 0.0)))
+                candidate = max(
+                    candidates,
+                    key=lambda item: (
+                        float(item.get("_vote_score", 0.0)),
+                        int(item.get("_vote_count", 0)),
+                        float(item.get("confidence", 0.0)),
+                    ),
+                )
+                state["latest"] = candidate
+                state["candidate_expires_at"] = frame_counter + 6
                 observations = state["observations"]
                 observations.append(candidate)
                 del observations[:-6]
                 same = [item for item in observations if item["text"] == candidate["text"]]
                 best = max(same, key=lambda item: float(item.get("confidence", 0.0)))
-                if len(same) >= 2 or float(best.get("confidence", 0.0)) >= 0.92:
+                if len(same) >= 2 or float(best.get("confidence", 0.0)) >= 0.88:
                     state["confirmed"] = best
                     state["expires_at"] = frame_counter + 75
 
         confirmed = state.get("confirmed")
         if confirmed and int(state.get("expires_at", 0)) >= frame_counter:
-            return confirmed
+            return {**confirmed, "provisional": False}
+        latest = state.get("latest")
+        if latest and int(state.get("candidate_expires_at", 0)) >= frame_counter:
+            # Show a valid OCR result immediately, but leave whitelist policy
+            # undecided until it has been confirmed across frames.
+            return {**latest, "provisional": True}
         return None
 
     def _prune_plate_memory(self, camera_id: str, frame_counter: int) -> None:
@@ -827,6 +890,7 @@ class LocalModelService:
         vehicle_boxes: list[list[int]] = []
         measured_speeds: list[float] = []
         seen_track_ids: set[int] = set()
+        unresolved_plate_targets = 0
         annotated = frame.copy()
 
         names = result.names
@@ -836,7 +900,14 @@ class LocalModelService:
             classes = boxes.cls.cpu().numpy().astype(int)
             confs = boxes.conf.cpu().numpy()
             ids = boxes.id.cpu().numpy().astype(int) if boxes.id is not None else [None] * len(xyxy)
-            for box, cls_id, det_conf, track_id in zip(xyxy, classes, confs, ids):
+            records = list(zip(xyxy, classes, confs, ids))
+            if stream_mode and len(records) > 1:
+                # Rotate OCR priority each inference cycle so a vehicle at the
+                # back of a queue does not wait behind the first detection.
+                offset = frame_counter % len(records)
+                records = records[offset:] + records[:offset]
+            plate_ocr_budget = 1 if stream_mode else len(records)
+            for box, cls_id, det_conf, track_id in records:
                 x1, y1, x2, y2 = [int(v) for v in box]
                 x1 += roi_x1
                 x2 += roi_x1
@@ -900,6 +971,12 @@ class LocalModelService:
                     continue
 
                 crop = frame[max(0, y1):max(0, y2), max(0, x1):max(0, x2)]
+                plate_key = self._memory_key(camera_id, stable_track_id, bbox)
+                plate_state = self._track_plate_memory.get(plate_key, {})
+                plate_ocr_due = crop.size and frame_counter - int(plate_state.get("last_run", -100)) >= 2
+                allow_plate_ocr = not stream_mode or (plate_ocr_budget > 0 and plate_ocr_due)
+                if stream_mode and allow_plate_ocr:
+                    plate_ocr_budget -= 1
                 stable_plate = self._stable_track_plate(
                     camera_id,
                     bbox,
@@ -907,13 +984,23 @@ class LocalModelService:
                     crop,
                     stream_mode,
                     frame_counter,
+                    allow_ocr=allow_plate_ocr,
                 )
                 plate_text = stable_plate["text"] if stable_plate else None
+                plate_is_provisional = bool(stable_plate and stable_plate.get("provisional"))
+                if not plate_text:
+                    unresolved_plate_targets += 1
                 minimum_unplated_area = 900 if small_target_mode else 5200
                 if not plate_text and area < minimum_unplated_area:
                     continue
                 plate_confidence = float(stable_plate.get("confidence", 0.0)) if stable_plate else float(det_conf)
-                decision = self._stable_decision(camera_id, bbox, stable_track_id, plate_text, plate_confidence)
+                decision = None if plate_is_provisional else self._stable_decision(
+                    camera_id,
+                    bbox,
+                    stable_track_id,
+                    plate_text,
+                    plate_confidence,
+                )
                 speed_cm_s = self._track_speed_cm_s(
                     camera_id,
                     stable_track_id,
@@ -997,7 +1084,10 @@ class LocalModelService:
             if speed_cm_s is not None:
                 measured_speeds.append(float(speed_cm_s))
 
-        if not stream_mode or frame_counter % 5 == 1:
+        # Full-frame OCR can attach a plate when a detector box is slightly
+        # off. Run it often enough for a clear rear plate to appear promptly,
+        # while vehicle-crop OCR keeps the usual path inexpensive.
+        if not stream_mode or (unresolved_plate_targets and frame_counter % 8 == 1):
             self._last_stream_plates[camera_id] = self.detect_plates(frame)
         full_plates = self._last_stream_plates.get(camera_id, [])
         for plate in full_plates:
@@ -1100,8 +1190,12 @@ class LocalModelService:
                 track_prefix = f"id:{detection.track_id} " if detection.track_id is not None else ""
                 label = f"{track_prefix}{detection.class_name} {detection.confidence:.2f}"
                 if detection.plate:
-                    status = "PASS" if detection.whitelist_status else "BLOCK"
-                    label += f" {detection.plate} {status}"
+                    if detection.whitelist_status is True:
+                        label += f" {detection.plate} PASS"
+                    elif detection.whitelist_status is False:
+                        label += f" {detection.plate} BLOCK"
+                    else:
+                        label += f" {detection.plate} OCR"
                 if detection.speed_cm_s is not None:
                     label += f" {detection.speed_cm_s:.1f}cm/s"
                 color = (36, 107, 253)
