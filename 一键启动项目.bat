@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 
-set "PROJECT_DIR=D:\zuoye\TrafficVisionAnalysis"
+for %%I in ("%~dp0.") do set "PROJECT_DIR=%%~fI"
 set "BACKEND_DIR=%PROJECT_DIR%\backend"
 set "FRONTEND_DIR=%PROJECT_DIR%\frontend"
 set "FRONTEND_URL=http://localhost:5173"
