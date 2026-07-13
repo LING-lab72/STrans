@@ -63,5 +63,17 @@ class CameraStatusItem(BaseModel):
     status: VideoStatus
 
 
+class RoadMaskSnapshot(BaseModel):
+    camera_id: str
+    status: Literal["ready", "unavailable"]
+    width: int | None = None
+    height: int | None = None
+    mask_data_url: str | None = None
+    generated_at: str | None = None
+    inference_ms: float | None = None
+    cached: bool = False
+    error: str | None = None
+
+
 class StartAllRequest(BaseModel):
     camera_ids: list[str] = Field(default_factory=list, description="Empty means start all preset sandtable cameras.")

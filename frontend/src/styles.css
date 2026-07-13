@@ -941,6 +941,48 @@ p {
   object-fit: contain;
 }
 
+.video-frame {
+  position: relative;
+  width: 100%;
+  max-height: clamp(360px, 43vh, 500px);
+}
+
+.video-frame img {
+  position: relative;
+  z-index: 1;
+}
+
+.frame-heatmap-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.frame-heat-spot {
+  position: absolute;
+  width: var(--heat-size);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(239, 68, 68, calc(0.78 * var(--heat-strength))) 0%, rgba(249, 115, 22, calc(0.5 * var(--heat-strength))) 32%, rgba(250, 204, 21, calc(0.28 * var(--heat-strength))) 52%, transparent 72%);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+
+.frame-heatmap-label {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 4px 7px;
+  color: #fff7ed;
+  background: rgba(124, 45, 18, 0.72);
+  border: 1px solid rgba(254, 215, 170, 0.55);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .empty-video {
   display: grid;
   justify-items: center;

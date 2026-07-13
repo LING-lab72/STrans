@@ -694,6 +694,31 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
   );
 }
 
+function FrameHeatmapOverlay({ analysis, cameraId, roadMask }) {
+  const spots = frameHeatmapSpots(analysis, cameraId);
+  const hasRoadMask = Boolean(roadMask?.mask_data_url);
+  const maskStyle = hasRoadMask ? {
+    WebkitMaskImage: `url("${roadMask.mask_data_url}")`,
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskSize: "100% 100%",
+    maskImage: `url("${roadMask.mask_data_url}")`,
+    maskRepeat: "no-repeat",
+    maskSize: "100% 100%",
+  } : undefined;
+  return (
+    <div className="frame-heatmap-overlay" style={maskStyle} aria-label={`道路约束画面热力图，${hasRoadMask ? spots.length : 0} 个检测热点`}>
+      {hasRoadMask && spots.map((spot, index) => (
+        <span
+          className="frame-heat-spot"
+          key={`${spot.x}-${spot.y}-${index}`}
+          style={{ left: `${spot.x}%`, top: `${spot.y}%`, "--heat-size": `${spot.size}%`, "--heat-strength": spot.strength }}
+        />
+      ))}
+      <span className="frame-heatmap-label">{hasRoadMask ? "道路约束热力" : "道路掩膜加载中"}</span>
+    </div>
+  );
+}
+
 function PreviewSlot({ slotIndex, cameraId, cameras, statuses, streamVersion, onChange, onSelect }) {
   const camera = cameras.find((item) => item.camera_id === cameraId) || cameras[0];
   const status = camera ? statuses[camera.camera_id] : null;
@@ -766,6 +791,7 @@ function App() {
   const [weather, setWeather] = useState(emptyWeather);
   const [roadModel, setRoadModel] = useState(null);
   const [roadHeatmap, setRoadHeatmap] = useState({ points: [] });
+  const [roadMask, setRoadMask] = useState(null);
   const [analysisMode, setAnalysisMode] = useState("traffic");
   const [reports, setReports] = useState([]);
   const [activeReportId, setActiveReportId] = useState(null);
@@ -851,6 +877,32 @@ function App() {
       .then(setRoadModel)
       .catch((error) => addLog(`道路模型加载失败：${error.message}`));
   }, [authToken, currentUser?.id]);
+
+  useEffect(() => {
+    if (!authToken || !selectedCamera || selectedHeatmapMode !== "frame") {
+      setRoadMask(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadRoadMask = async () => {
+      try {
+        const response = await fetchWithTimeout(`${API_BASE}/api/cameras/${encodeURIComponent(selectedCamera.camera_id)}/road-mask`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const snapshot = await response.json();
+        if (!cancelled) setRoadMask(snapshot);
+      } catch {
+        if (!cancelled) setRoadMask(null);
+      }
+    };
+    loadRoadMask();
+    const timer = window.setInterval(loadRoadMask, 750);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [authToken, selectedCamera?.camera_id, selectedHeatmapMode]);
 
   useEffect(() => {
     if (!authToken || !currentUser || viewMode !== "reports") return;
@@ -2394,7 +2446,10 @@ function App() {
             )}
             <div className="video-stage">
               {selectedCamera && selectedStatus?.running ? (
-                <img src={streamUrl} alt={`${selectedCamera.name} 视频流`} />
+                <div className="video-frame" style={{ aspectRatio: `${selectedStatus?.frame_width || 16} / ${selectedStatus?.frame_height || 9}` }}>
+                  <img src={streamUrl} alt={`${selectedCamera.name} 视频流`} />
+                  {analysisMode === "traffic" && selectedHeatmapMode === "frame" && <FrameHeatmapOverlay analysis={analysis} cameraId={selectedCamera.camera_id} roadMask={roadMask} />}
+                </div>
               ) : (
                 <div className="empty-video">
                   <Camera size={48} />
@@ -2434,9 +2489,9 @@ function App() {
               </button>
             }
           >
-            <button type="button" className="heatmap-button" onClick={() => setHeatmapOpen(true)}>
-              <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} />
-            </button>
+            {selectedHeatmapMode === "off" ? <p className="empty-copy heatmap-disabled-copy">当前摄像头已关闭热力图显示。</p>
+              : selectedHeatmapMode === "frame" ? <p className="empty-copy heatmap-frame-copy">移动设备正在使用语义道路热力图：SegFormer 道路掩膜会裁剪左侧实时视频中的检测热点。</p>
+                : <button type="button" className="heatmap-button" onClick={() => setHeatmapOpen(true)}><HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} /></button>}
           </Panel> : <Panel title="道路异常识别" icon={<AlertTriangle size={18} />} className="anomaly-mode-panel">
             <div className="anomaly-mode-copy">
               <strong>独立任务模式</strong>

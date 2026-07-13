@@ -34,7 +34,7 @@ from app.schemas.dashboard import (
     WhitelistCreateRequest,
     UserAdminUpdateRequest,
 )
-from app.schemas.video import CameraCreateRequest, CameraSource, CameraUpdateRequest, StartAllRequest, VideoStartRequest, VideoStatus
+from app.schemas.video import CameraCreateRequest, CameraSource, CameraUpdateRequest, RoadMaskSnapshot, StartAllRequest, VideoStartRequest, VideoStatus
 from app.services.algorithm_client import AlgorithmClient
 from app.services.analysis_store import AnalysisStore
 from app.services.adaptive_scheduler import adaptive_model_scheduler
@@ -44,6 +44,7 @@ from app.services.local_model import LocalModelService
 from app.services.intelligence_report import intelligence_report_service
 from app.services.road_anomaly import road_anomaly_service
 from app.services.road_logic import road_logic_service
+from app.services.road_mask import road_mask_service
 from app.services.system_monitor import system_monitor
 from app.services.weather import beijing_weather_service
 from app.services.whitelist import decide_plate, whitelist_store
@@ -576,6 +577,23 @@ def push_algorithm_result(req: AnalysisPushRequest):
 @app.get("/api/analysis/latest")
 def latest_analysis():
     return algorithm_client.latest_result
+
+
+@app.get("/api/cameras/{camera_id}/road-mask", response_model=RoadMaskSnapshot)
+def camera_road_mask(camera_id: str, user: dict = Depends(current_user)) -> RoadMaskSnapshot:
+    _ensure_camera(camera_id)
+    try:
+        snapshot = road_mask_service.snapshot(camera_id, camera_hub.latest_jpeg(camera_id))
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="Road mask model is unavailable. Check the server model deployment.") from error
+    if snapshot["status"] != "ready":
+        raise HTTPException(status_code=409, detail=snapshot["error"])
+    return RoadMaskSnapshot(**snapshot)
+
+
+@app.get("/api/road-mask/health")
+def road_mask_health(user: dict = Depends(current_admin)):
+    return road_mask_service.health()
 
 
 @app.get("/api/analysis/events")

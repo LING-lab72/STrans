@@ -60,6 +60,5 @@ class RoadMaskServiceTests(unittest.TestCase):
 
         service.download_model.assert_called_once_with()
 
-
 if __name__ == "__main__":
     unittest.main()
