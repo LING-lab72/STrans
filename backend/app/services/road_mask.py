@@ -32,6 +32,16 @@ def encode_mask_data_url(mask: np.ndarray) -> str:
     return "data:image/png;base64," + base64.b64encode(encoded.tobytes()).decode("ascii")
 
 
+def render_road_schematic(mask: np.ndarray) -> np.ndarray:
+    """Render a clean heatmap base from semantic road geometry only."""
+    binary = np.where(mask > 0, 255, 0).astype(np.uint8)
+    canvas = np.full((*binary.shape, 3), (25, 39, 52), dtype=np.uint8)
+    canvas[binary > 0] = (72, 93, 104)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(canvas, contours, -1, (117, 209, 224), max(1, round(min(binary.shape) / 90)))
+    return canvas
+
+
 class RoadMaskService:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -109,12 +119,14 @@ class RoadMaskService:
             mask_width = min(width, MASK_MAX_WIDTH)
             mask_height = max(1, round(height * mask_width / width))
             binary_mask = cv2.resize(binary_mask, (mask_width, mask_height), interpolation=cv2.INTER_NEAREST)
+            schematic = render_road_schematic(binary_mask)
             result = {
                 "camera_id": camera_id,
                 "status": "ready",
                 "width": width,
                 "height": height,
                 "mask_data_url": encode_mask_data_url(binary_mask),
+                "schematic_data_url": encode_mask_data_url(schematic),
                 "generated_at": datetime.now().isoformat(timespec="seconds"),
                 "inference_ms": round((time.perf_counter() - started) * 1000, 1),
                 "cached": False,

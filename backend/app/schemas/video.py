@@ -69,6 +69,7 @@ class RoadMaskSnapshot(BaseModel):
     width: int | None = None
     height: int | None = None
     mask_data_url: str | None = None
+    schematic_data_url: str | None = None
     generated_at: str | None = None
     inference_ms: float | None = None
     cached: bool = False
