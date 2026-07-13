@@ -310,7 +310,9 @@ def update_camera(camera_id: str, req: CameraUpdateRequest, user: dict = Depends
         camera = camera_hub.update_source(camera_id, req)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="摄像头不存在") from exc
-    auth_store.add_audit(user["username"], "update_camera", camera_id, req.model_dump_json(exclude_none=True))
+    # Stream URLs may contain access credentials. Keep audit records useful
+    # without persisting the submitted connection string.
+    auth_store.add_audit(user["username"], "update_camera", camera_id, "摄像头配置已更新（视频地址已脱敏）")
     return camera
 
 

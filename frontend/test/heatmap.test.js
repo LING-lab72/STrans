@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { frameHeatmapSpots, resolveHeatmapMode } from "../src/heatmap.js";
+import { frameDetectionBoxes, frameHeatmapSpots, rawCameraStreamUrl, resolveHeatmapMode } from "../src/heatmap.js";
 
 test("mobile cameras default to frame heatmap while sandtable cameras stay road mapped", () => {
   assert.equal(resolveHeatmapMode({ type: "phone", heatmap_mode: "auto" }), "frame");
@@ -30,4 +30,31 @@ test("frame heatmap caps rendered hotspots to protect the live video view", () =
   }));
 
   assert.equal(frameHeatmapSpots({ source_width: 100, source_height: 100, detections }, "phone1").length, 80);
+});
+
+test("right-side heatmap uses the raw camera stream instead of a second model stream", () => {
+  assert.equal(rawCameraStreamUrl("http://localhost:8000", "phone camera", 42), "http://localhost:8000/api/cameras/phone%20camera/mjpeg?v=42");
+});
+
+test("central preview converts current-camera detections into bounded overlay boxes", () => {
+  const boxes = frameDetectionBoxes({
+    camera_id: "phone1",
+    source_width: 1920,
+    source_height: 1080,
+    detections: [
+      { camera_id: "phone1", bbox: [480, 270, 960, 810], confidence: 0.9, class_name: "car", plate: "ABC123" },
+      { camera_id: "other", bbox: [0, 0, 100, 100], confidence: 0.9, class_name: "car" },
+      { camera_id: "phone1", bbox: [100, 100, 100, 300], confidence: 0.9, class_name: "car" },
+    ],
+  }, "phone1");
+
+  assert.deepEqual(boxes, [{
+    left: 25,
+    top: 25,
+    width: 25,
+    height: 50,
+    confidence: 0.9,
+    className: "car",
+    plate: "ABC123",
+  }]);
 });
