@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { frameHeatmapSpots, resolveHeatmapMode } from "./heatmap";
 import {
   Activity,
   AlertTriangle,
@@ -804,13 +805,14 @@ function App() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [featureMessage, setFeatureMessage] = useState("");
   const [passwordForm, setPasswordForm] = useState({ old_password: "", new_password: "" });
-  const [cameraForm, setCameraForm] = useState({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+  const [cameraForm, setCameraForm] = useState({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "", heatmap_mode: "auto" });
   const [incidentNotes, setIncidentNotes] = useState({});
   const [resetPasswords, setResetPasswords] = useState({});
   const [schedulerState, setSchedulerState] = useState({ enabled: true, active: [], decisions: [] });
 
   const selectedCamera = cameras.find((item) => item.camera_id === selectedCameraId) || cameras[0];
   const selectedStatus = selectedCamera ? statuses[selectedCamera.camera_id] : null;
+  const selectedHeatmapMode = resolveHeatmapMode(selectedCamera);
   const stats = analysis.traffic_stats || emptyAnalysis.traffic_stats;
   const streamUrl = useMemo(
     () => (selectedCamera ? `${API_BASE}/api/cameras/${selectedCamera.camera_id}/model-mjpeg?model_name=${selectedModelName}&task_mode=${analysisMode}&v=${streamVersion}` : ""),
@@ -1443,11 +1445,12 @@ function App() {
       stream_url: camera.stream_url,
       location: camera.location,
       description: camera.description || "",
+      heatmap_mode: camera.heatmap_mode || "auto",
     });
   }
 
   function clearCameraForm() {
-    setCameraForm({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+    setCameraForm({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "", heatmap_mode: "auto" });
   }
 
   async function saveManagedCamera(event) {
@@ -1464,6 +1467,7 @@ function App() {
           stream_url: cameraForm.stream_url,
           location: cameraForm.location,
           description: cameraForm.description || null,
+          heatmap_mode: cameraForm.heatmap_mode,
         }),
       });
       setFeatureMessage(editing ? "摄像头配置已更新。" : "摄像头已添加并写入数据库。");
@@ -2055,6 +2059,10 @@ function App() {
                 <input id="managedCameraLocation" required value={cameraForm.location} onChange={(event) => setCameraForm((previous) => ({ ...previous, location: event.target.value }))} />
                 <label htmlFor="managedCameraDescription">说明</label>
                 <textarea id="managedCameraDescription" value={cameraForm.description} onChange={(event) => setCameraForm((previous) => ({ ...previous, description: event.target.value }))} />
+                <label htmlFor="managedCameraHeatmap">热力图显示</label>
+                <select id="managedCameraHeatmap" value={cameraForm.heatmap_mode} onChange={(event) => setCameraForm((previous) => ({ ...previous, heatmap_mode: event.target.value }))}>
+                  <option value="auto">自动（沙盘道路 / 移动设备画面）</option><option value="road">道路映射</option><option value="frame">画面坐标</option><option value="off">关闭</option>
+                </select>
                 <div className="form-actions"><button type="submit" className="primary" disabled={busy}>保存配置</button>{cameraForm.camera_id && <button type="button" onClick={clearCameraForm}>取消编辑</button>}</div>
               </form>
               <div className="managed-camera-list">
@@ -2551,7 +2559,7 @@ function App() {
         </>
       )}
 
-      {heatmapOpen && (
+      {heatmapOpen && selectedHeatmapMode === "road" && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <section className="heatmap-modal">
             <header>

@@ -1160,6 +1160,15 @@ select:focus {
   cursor: zoom-in;
 }
 
+.heatmap-frame-copy,
+.heatmap-disabled-copy {
+  margin: 10px;
+  padding: 14px;
+  background: #f7fbff;
+  border: 1px solid #d3e1ed;
+  border-radius: 8px;
+}
+
 .heatmap-road {
   position: absolute;
   background: rgba(72, 90, 110, 0.16);
