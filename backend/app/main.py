@@ -20,11 +20,15 @@ from app.schemas.dashboard import (
     GateDecisionRequest,
     IntelligenceReportConfigUpdate,
     IntelligenceReportGenerateRequest,
+    IncidentUpdateRequest,
+    PasswordChangeRequest,
+    PasswordResetRequest,
     RegisterRequest,
     TrafficStats,
     WhitelistCreateRequest,
+    UserAdminUpdateRequest,
 )
-from app.schemas.video import CameraCreateRequest, CameraSource, StartAllRequest, VideoStartRequest, VideoStatus
+from app.schemas.video import CameraCreateRequest, CameraSource, CameraUpdateRequest, StartAllRequest, VideoStartRequest, VideoStatus
 from app.services.algorithm_client import AlgorithmClient
 from app.services.analysis_store import AnalysisStore
 from app.services.auth_store import auth_store
@@ -203,30 +207,116 @@ def auth_logout(authorization: str | None = Header(default=None)):
     return {"ok": True}
 
 
+@app.put("/api/auth/password")
+def change_own_password(req: PasswordChangeRequest, user: dict = Depends(current_user)):
+    try:
+        auth_store.change_password(user["id"], req.old_password, req.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "change_password", user["username"], "用户修改自己的登录密码")
+    return {"ok": True, "reauth_required": True}
+
+
+@app.get("/api/admin/users")
+def list_system_users(user: dict = Depends(current_admin)):
+    return {"items": auth_store.list_users()}
+
+
+@app.put("/api/admin/users/{user_id}")
+def update_system_user(user_id: int, req: UserAdminUpdateRequest, user: dict = Depends(current_admin)):
+    if user_id == user["id"] and req.enabled is False:
+        raise HTTPException(status_code=400, detail="不能禁用当前登录账号")
+    try:
+        updated = auth_store.update_user(user_id, role=req.role, enabled=req.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "update_user", updated.get("username", str(user_id)), req.model_dump_json(exclude_none=True))
+    return updated
+
+
+@app.put("/api/admin/users/{user_id}/password")
+def reset_system_user_password(user_id: int, req: PasswordResetRequest, user: dict = Depends(current_admin)):
+    try:
+        auth_store.reset_password(user_id, req.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "reset_password", str(user_id), "管理员重置用户密码")
+    return {"ok": True}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_system_user(user_id: int, user: dict = Depends(current_admin)):
+    if user_id == user["id"]:
+        raise HTTPException(status_code=400, detail="不能删除当前登录账号")
+    try:
+        auth_store.delete_user(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "delete_user", str(user_id), "管理员删除用户")
+    return {"ok": True}
+
+
+@app.get("/api/admin/audit")
+def list_audit_logs(limit: int = Query(default=100, ge=1, le=500), user: dict = Depends(current_admin)):
+    return {"items": auth_store.list_audit(limit)}
+
+
 @app.get("/api/cameras", response_model=list[CameraSource])
-def list_cameras() -> list[CameraSource]:
+def list_cameras(user: dict = Depends(current_user)) -> list[CameraSource]:
     return camera_hub.list_sources()
 
 
 @app.post("/api/cameras", response_model=CameraSource)
-def add_camera(req: CameraCreateRequest) -> CameraSource:
-    return camera_hub.add_source(req)
+def add_camera(req: CameraCreateRequest, user: dict = Depends(current_admin)) -> CameraSource:
+    camera = camera_hub.add_source(req)
+    auth_store.add_audit(user["username"], "create_camera", camera.camera_id, camera.name)
+    return camera
+
+
+@app.put("/api/cameras/{camera_id}", response_model=CameraSource)
+def update_camera(camera_id: str, req: CameraUpdateRequest, user: dict = Depends(current_admin)) -> CameraSource:
+    try:
+        camera = camera_hub.update_source(camera_id, req)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="摄像头不存在") from exc
+    auth_store.add_audit(user["username"], "update_camera", camera_id, req.model_dump_json(exclude_none=True))
+    return camera
+
+
+@app.delete("/api/cameras/{camera_id}")
+def delete_camera(camera_id: str, user: dict = Depends(current_admin)):
+    try:
+        camera_hub.delete_source(camera_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="摄像头不存在") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "delete_camera", camera_id, "删除自定义摄像头")
+    return {"ok": True}
+
+
+@app.post("/api/cameras/{camera_id}/test")
+def test_camera(camera_id: str, user: dict = Depends(current_admin)):
+    try:
+        return camera_hub.test_source(camera_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="摄像头不存在") from exc
 
 
 @app.post("/api/cameras/{camera_id}/start", response_model=VideoStatus)
-def start_camera(camera_id: str) -> VideoStatus:
+def start_camera(camera_id: str, user: dict = Depends(current_user)) -> VideoStatus:
     _ensure_camera(camera_id)
     return camera_hub.start(camera_id)
 
 
 @app.post("/api/cameras/{camera_id}/stop", response_model=VideoStatus)
-def stop_camera(camera_id: str) -> VideoStatus:
+def stop_camera(camera_id: str, user: dict = Depends(current_user)) -> VideoStatus:
     _ensure_camera(camera_id)
     return camera_hub.stop(camera_id)
 
 
 @app.post("/api/cameras/start-all")
-def start_all_cameras(req: StartAllRequest):
+def start_all_cameras(req: StartAllRequest, user: dict = Depends(current_admin)):
     camera_ids = req.camera_ids or [camera.camera_id for camera in camera_hub.list_sources() if camera.type == "sandtable"]
     results = []
     known_ids = {camera.camera_id for camera in camera_hub.list_sources()}
@@ -237,7 +327,7 @@ def start_all_cameras(req: StartAllRequest):
 
 
 @app.post("/api/cameras/stop-all")
-def stop_all_cameras():
+def stop_all_cameras(user: dict = Depends(current_admin)):
     return {"items": camera_hub.stop_all()}
 
 
@@ -435,12 +525,15 @@ def analysis_events():
 
 
 @app.get("/api/history")
-def analysis_history(limit: int = Query(default=30, ge=1, le=500), camera_id: str | None = None):
-    return {"items": analysis_store.list_records(limit=limit, camera_id=camera_id)}
+def analysis_history(limit: int = Query(default=30, ge=1, le=500), camera_id: str | None = None, user: dict = Depends(current_user)):
+    return {
+        "items": analysis_store.list_records(limit=limit, camera_id=camera_id),
+        "total": analysis_store.count_records(camera_id=camera_id),
+    }
 
 
 @app.get("/api/history/export")
-def export_analysis_history(format: str = Query(default="csv", pattern="^(csv|json)$"), limit: int = Query(default=1000, ge=1, le=5000)):
+def export_analysis_history(format: str = Query(default="csv", pattern="^(csv|json)$"), limit: int = Query(default=1000, ge=1, le=5000), user: dict = Depends(current_user)):
     if format == "json":
         return Response(
             content=analysis_store.export_json(limit=limit),
@@ -452,6 +545,36 @@ def export_analysis_history(format: str = Query(default="csv", pattern="^(csv|js
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="traffic-analysis-history.csv"'},
     )
+
+
+@app.delete("/api/history/{record_id}")
+def delete_analysis_history(record_id: int, user: dict = Depends(current_admin)):
+    if not analysis_store.delete_record(record_id):
+        raise HTTPException(status_code=404, detail="历史记录不存在")
+    auth_store.add_audit(user["username"], "delete_history", str(record_id), "删除检测历史记录")
+    return {"ok": True}
+
+
+@app.delete("/api/history")
+def purge_analysis_history(before: str | None = None, user: dict = Depends(current_admin)):
+    removed = analysis_store.purge_records(before=before)
+    auth_store.add_audit(user["username"], "purge_history", before or "all", f"删除 {removed} 条检测历史")
+    return {"ok": True, "removed": removed}
+
+
+@app.get("/api/incidents")
+def list_incidents(status: str | None = None, limit: int = Query(default=100, ge=1, le=500), user: dict = Depends(current_user)):
+    return {"items": analysis_store.list_incidents(limit=limit, status=status)}
+
+
+@app.put("/api/incidents/{event_id}")
+def update_incident(event_id: str, req: IncidentUpdateRequest, user: dict = Depends(current_user)):
+    try:
+        incident = analysis_store.update_incident(event_id, req.status, user["username"], req.note)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    auth_store.add_audit(user["username"], "handle_incident", event_id, f"{req.status}: {req.note}")
+    return incident
 
 
 @app.get("/api/intelligence/config")
@@ -496,7 +619,9 @@ def get_detection_config():
 
 @app.put("/api/config/threshold")
 def update_detection_config(req: DetectionConfig, user: dict = Depends(current_admin)):
-    return algorithm_client.update_detection_config(req)
+    config = algorithm_client.update_detection_config(req)
+    auth_store.add_audit(user["username"], "update_model_config", "detection", req.model_dump_json())
+    return config
 
 
 @app.get("/api/dashboard")
@@ -580,7 +705,7 @@ def model_selection_disabled(user: dict = Depends(current_admin)):
 
 
 @app.get("/api/whitelist")
-def whitelist_items():
+def whitelist_items(user: dict = Depends(current_user)):
     return {"items": whitelist_store.list_items()}
 
 
@@ -589,6 +714,7 @@ def create_whitelist_item(req: WhitelistCreateRequest, user: dict = Depends(curr
     try:
         item = whitelist_store.upsert(req.plate_no, req.owner, req.note)
         local_model.clear_gate_memory(req.plate_no)
+        auth_store.add_audit(user["username"], "upsert_whitelist", req.plate_no, req.note)
         return item
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -600,6 +726,7 @@ def delete_whitelist_item(plate_no: str, user: dict = Depends(current_admin)):
     if not removed:
         raise HTTPException(status_code=404, detail=f"Whitelist plate not found: {plate_no}")
     local_model.clear_gate_memory(plate_no)
+    auth_store.add_audit(user["username"], "delete_whitelist", plate_no, "删除白名单车辆")
     return {"removed": True, "plate_no": plate_no}
 
 

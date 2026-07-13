@@ -1,90 +1,81 @@
-# STrans
+# STrans 云边端协同智慧交通视觉感知系统
 
-云边端协同智慧交通视觉感知与沙盘数字孪生实训项目资料、需求设计文档和阶段测试脚本。
+STrans 面向学院智慧交通沙盘，使用手机、RTSP 摄像头或本地视频作为边端采集源，在电脑端完成车辆检测、ByteTrack 跟踪、车牌识别、白名单判断、道路异常分析、拥堵热力图和禁停告警，并通过 React 监控大屏展示结果。
 
-项目面向学院 704 智慧交通沙盘，目标是用手机或 ESP32-CAM 作为边缘采集设备，电脑作为边/云端分析节点，前端大屏展示车辆识别、车牌/电子 ID 白名单通行决策、拥堵热力图、禁停告警、道路异常和历史统计。
+## 主要功能
 
-当前阶段聚焦“稳定演示闭环”：
-
-- 手机或 ESP32-CAM 单摄像头接入；
-- Python/OpenCV 拉取实时视频流并统计分辨率、帧率和截图；
-- 车辆、车牌/电子 ID、障碍物和道路区域事件识别方案设计；
-- 设备管理、模型管理、系统资源监控、白名单通行决策和历史统计设计；
-- 为后续 ArUco 标定、沙盘坐标映射、Mock 交通流和数字孪生展示做准备。
+- 登录、注册、图片验证码和管理员/普通用户权限
+- 多路沙盘 RTSP、手机 IP Webcam、本地图片与视频接入
+- YOLO11s / VisDrone 车辆检测、ByteTrack 跟踪和 HyperLPR3 车牌识别
+- 白名单车辆管理与放行/拦截判断
+- 车辆监控和道路异常两种独立任务模式
+- 拥堵热力图、禁停告警、速度估算和道路建模
+- 功能中心：历史记录、告警处置、账号安全、摄像头、白名单、模型、用户和审计日志
+- DeepSeek 检测成果智能分析报告
+- CPU、GPU、显存、内存和推理耗时监控
+- Web Speech API 前端语音控制
 
 ## 目录
 
 ```text
-智能交通沙盘数字孪生项目方案.md
-需求分析文档_V1.0.md
-系统设计文档_V1.0.md
-算法方案详细设计.md
-ESP32-CAM阶段测试方案.md
-esp32_cam_test/
-  requirements.txt
-  stream_test.py
-  probe_esp32_cam.ps1
+backend/        FastAPI、SQLite、视频接入和本地模型服务
+frontend/       React + Vite 监控大屏
+algorithms/     算法模型与说明
+docs/           接口和架构资料
+交付文档/       需求、设计和答辩材料
+一键启动项目.bat
 ```
 
-## 快速测试
+## 环境准备
 
-### 前后端视频接入测试
-
-启动后端：
+建议使用 Python 3.11 或 3.12、Node.js 20 及 NVIDIA CUDA 环境。
 
 ```powershell
-cd backend
+cd D:\zuoye\TrafficVisionAnalysis\backend
+python -m pip install -r requirements.txt
+
+cd ..\frontend
+npm install
+```
+
+管理员初始密码可在首次创建数据库前通过环境变量覆盖：
+
+```powershell
+$env:STRANS_ADMIN_PASSWORD="请设置强密码"
+```
+
+## 启动
+
+双击根目录的 `一键启动项目.bat`，或分别启动：
+
+```powershell
+cd D:\zuoye\TrafficVisionAnalysis\backend
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-启动前端：
-
 ```powershell
-cd frontend
-pnpm install
-pnpm dev
+cd D:\zuoye\TrafficVisionAnalysis\frontend
+npm run dev -- --host 0.0.0.0
 ```
 
-浏览器访问：
+访问 `http://localhost:5173`。后端健康检查地址为 `http://127.0.0.1:8000/api/health`。
 
-```text
-http://localhost:5173
-```
+## 数据持久化
 
-在页面右侧输入手机 IP 摄像头 App 提供的视频流地址，例如：
+SQLite 数据库位于 `backend/data/traffic_analysis.db`，保存用户、会话、检测历史、白名单、告警处置、摄像头配置、智能报告和审计日志。交付前应备份该文件。
 
-```text
-http://手机IP:8080/video
-rtsp://手机IP:8554/live
-```
+## 演示建议
 
-也可以输入 `0` 测试电脑自带摄像头。
+1. 登录后启动一路沙盘摄像头。
+2. 展示车辆检测、跟踪、车牌和白名单结果。
+3. 打开拥堵图和禁停告警。
+4. 切换道路异常模式，演示异物或行人检测。
+5. 在功能中心展示历史、告警处置、设备和用户权限。
+6. 展示系统资源监控与智能分析报告。
 
-### ESP32-CAM 测试
+## 注意事项
 
-安装 Python 依赖：
-
-```powershell
-cd D:\codeproject\STrans\esp32_cam_test
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-探测串口和局域网候选地址：
-
-```powershell
-.\probe_esp32_cam.ps1 -Port COM3
-```
-
-拉取 ESP32-CAM 视频流：
-
-```powershell
-python .\stream_test.py --url http://ESP32_CAM_IP:81/stream --seconds 10 --out esp32_cam_snapshot.jpg
-```
-
-## 参考资料
-
-- Espressif Arduino ESP32 官方仓库 CameraWebServer 示例：<https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/Camera/CameraWebServer/CameraWebServer.ino>
-- Espressif ESP32 Camera Driver：<https://github.com/espressif/esp32-camera>
-- ESP32-CAM 智慧交通违章检测参考项目：<https://github.com/gremlinflat/ESP32-CAM---Smart-Traffic-Violation-System>
+- 校园网环境下确认电脑能够访问沙盘 RTSP 地址。
+- 同时开启过多摄像头会增加解码和显存压力，系统默认限制活跃视频流数量。
+- Web Speech API 需要新版 Edge 或 Chrome，并允许网页使用麦克风。
+- 正式部署时不要继续使用默认管理员密码。

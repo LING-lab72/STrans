@@ -27,12 +27,13 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { Mic } from "lucide-react";
+import { Bell, KeyRound, Mic, Settings2, ShieldCheck, Users } from "lucide-react";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_PHONE_URL = "http://192.168.110.13:8080/video";
 const API_REQUEST_TIMEOUT_MS = 8000;
+const FEATURE_VIEWS = new Set(["account", "history", "incidents", "cameras", "whitelist", "models", "users", "audit"]);
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = API_REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -508,6 +509,14 @@ function App() {
   const [reportMessage, setReportMessage] = useState("");
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceMessage, setVoiceMessage] = useState("点击开始识别，展开下方指令表查看全部可用说法");
+  const [systemUsers, setSystemUsers] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [featureMessage, setFeatureMessage] = useState("");
+  const [passwordForm, setPasswordForm] = useState({ old_password: "", new_password: "" });
+  const [cameraForm, setCameraForm] = useState({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+  const [incidentNotes, setIncidentNotes] = useState({});
+  const [resetPasswords, setResetPasswords] = useState({});
 
   const selectedCamera = cameras.find((item) => item.camera_id === selectedCameraId) || cameras[0];
   const selectedStatus = selectedCamera ? statuses[selectedCamera.camera_id] : null;
@@ -533,7 +542,10 @@ function App() {
       setAuthToken("");
       setCurrentUser(null);
     }
-    if (!response.ok) throw new Error(`${response.status} ${path}`);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || `${response.status} ${path}`);
+    }
     return response.json();
   }
 
@@ -591,6 +603,34 @@ function App() {
     }
   }, [authToken, currentUser, viewMode]);
 
+  const loadFeatureData = useCallback(async () => {
+    if (!authToken || !currentUser || !FEATURE_VIEWS.has(viewMode)) return;
+    try {
+      if (viewMode === "history") {
+        const data = await requestJson("/api/history?limit=100");
+        setHistory(data.items || []);
+      } else if (viewMode === "incidents") {
+        const data = await requestJson("/api/incidents?limit=100");
+        setIncidents(data.items || []);
+      } else if (viewMode === "users" && currentUser.role === "admin") {
+        const data = await requestJson("/api/admin/users");
+        setSystemUsers(data.items || []);
+      } else if (viewMode === "audit" && currentUser.role === "admin") {
+        const data = await requestJson("/api/admin/audit?limit=150");
+        setAuditLogs(data.items || []);
+      } else if (viewMode === "cameras") {
+        const data = await requestJson("/api/cameras");
+        setCameras(data || []);
+      }
+    } catch (error) {
+      setFeatureMessage(`功能数据加载失败：${error.message}`);
+    }
+  }, [authToken, currentUser, viewMode]);
+
+  useEffect(() => {
+    loadFeatureData();
+  }, [loadFeatureData]);
+
   const refresh = useCallback(async () => {
     if (!authToken || !currentUser) return;
     try {
@@ -609,7 +649,7 @@ function App() {
       setStatuses(Object.fromEntries((statusList.items || []).map((item) => [item.camera_id, item.status])));
       setAnalysis(latest || emptyAnalysis);
       setDashboard(dash);
-      setHistory(historyData.items || []);
+      if (viewMode !== "history") setHistory(historyData.items || []);
       setWhitelist(whitelistData.items || []);
       setResources(resourceData || emptyResources);
       setWeather(weatherData || emptyWeather);
@@ -620,7 +660,7 @@ function App() {
     } catch (error) {
       addLog(`后端连接失败：${error.message}`);
     }
-  }, [selectedCameraId, authToken, currentUser]);
+  }, [selectedCameraId, authToken, currentUser, viewMode]);
 
   usePolling(refresh, 1500);
 
@@ -996,6 +1036,192 @@ function App() {
     }
   }
 
+  async function changeOwnPassword(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await requestJson("/api/auth/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(passwordForm),
+      });
+      setFeatureMessage("密码修改成功，请重新登录。");
+      setPasswordForm({ old_password: "", new_password: "" });
+      window.setTimeout(logout, 800);
+    } catch (error) {
+      setFeatureMessage(`密码修改失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateSystemUser(userId, updates) {
+    setBusy(true);
+    try {
+      await requestJson(`/api/admin/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      setFeatureMessage("用户状态已更新。");
+      await loadFeatureData();
+    } catch (error) {
+      setFeatureMessage(`用户更新失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetSystemUserPassword(userId) {
+    const newPassword = resetPasswords[userId] || "";
+    if (newPassword.length < 6) {
+      setFeatureMessage("重置密码至少需要 6 位。");
+      return;
+    }
+    setBusy(true);
+    try {
+      await requestJson(`/api/admin/users/${userId}/password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_password: newPassword }),
+      });
+      setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
+      setFeatureMessage("密码已重置，该用户需要重新登录。");
+    } catch (error) {
+      setFeatureMessage(`密码重置失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteSystemUser(userId) {
+    if (!window.confirm("确定删除这个普通用户吗？")) return;
+    setBusy(true);
+    try {
+      await requestJson(`/api/admin/users/${userId}`, { method: "DELETE" });
+      setFeatureMessage("用户已删除。");
+      await loadFeatureData();
+    } catch (error) {
+      setFeatureMessage(`用户删除失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editManagedCamera(camera) {
+    setCameraForm({
+      camera_id: camera.camera_id,
+      name: camera.name,
+      type: camera.type,
+      stream_url: camera.stream_url,
+      location: camera.location,
+      description: camera.description || "",
+    });
+  }
+
+  function clearCameraForm() {
+    setCameraForm({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+  }
+
+  async function saveManagedCamera(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const editing = Boolean(cameraForm.camera_id);
+      await requestJson(editing ? `/api/cameras/${cameraForm.camera_id}` : "/api/cameras", {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: cameraForm.name,
+          type: cameraForm.type,
+          stream_url: cameraForm.stream_url,
+          location: cameraForm.location,
+          description: cameraForm.description || null,
+        }),
+      });
+      setFeatureMessage(editing ? "摄像头配置已更新。" : "摄像头已添加并写入数据库。");
+      clearCameraForm();
+      await loadFeatureData();
+    } catch (error) {
+      setFeatureMessage(`摄像头保存失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testManagedCamera(cameraId) {
+    setBusy(true);
+    try {
+      const result = await requestJson(`/api/cameras/${cameraId}/test`, { method: "POST" });
+      setFeatureMessage(`${cameraId}：${result.message}${result.frame_width ? `，${result.frame_width}×${result.frame_height}` : ""}`);
+    } catch (error) {
+      setFeatureMessage(`连接测试失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteManagedCamera(cameraId) {
+    if (!window.confirm("确定删除这个自定义摄像头吗？")) return;
+    setBusy(true);
+    try {
+      await requestJson(`/api/cameras/${cameraId}`, { method: "DELETE" });
+      setFeatureMessage("摄像头已删除。");
+      if (cameraForm.camera_id === cameraId) clearCameraForm();
+      await loadFeatureData();
+    } catch (error) {
+      setFeatureMessage(`摄像头删除失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleIncident(eventId, status) {
+    setBusy(true);
+    try {
+      await requestJson(`/api/incidents/${encodeURIComponent(eventId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, note: incidentNotes[eventId] || "" }),
+      });
+      setFeatureMessage("告警处置状态已保存。");
+      await loadFeatureData();
+    } catch (error) {
+      setFeatureMessage(`告警处置失败：${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteHistoryRecord(recordId) {
+    if (!window.confirm("确定删除这条历史记录吗？")) return;
+    try {
+      await requestJson(`/api/history/${recordId}`, { method: "DELETE" });
+      setHistory((previous) => previous.filter((item) => item.id !== recordId));
+      setFeatureMessage("历史记录已删除。");
+    } catch (error) {
+      setFeatureMessage(`历史记录删除失败：${error.message}`);
+    }
+  }
+
+  async function downloadHistory(format) {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/api/history/export?format=${format}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `traffic-analysis-history.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setFeatureMessage(`导出失败：${error.message}`);
+    }
+  }
+
   async function saveReportConfig() {
     setBusy(true);
     try {
@@ -1170,22 +1396,12 @@ function App() {
           <button type="button" className={cx("nav-switch", viewMode === "monitor" && "active")} onClick={() => setViewMode("monitor")}>
             实时监控
           </button>
-          <button type="button" className={cx("nav-switch", viewMode === "history" && "active")} onClick={() => setViewMode("history")}>
-            历史记录
+          <button type="button" className={cx("nav-switch", FEATURE_VIEWS.has(viewMode) && "active")} onClick={() => setViewMode("history")}>
+            功能中心
           </button>
           <button type="button" className={cx("nav-switch", viewMode === "reports" && "active")} onClick={() => setViewMode("reports")}>
             智能报告
           </button>
-          <button type="button" className={cx("nav-switch", viewMode === "whitelist" && "active")} onClick={() => setViewMode("whitelist")}>
-            白名单
-          </button>
-          {isAdmin && (
-            <>
-              <button type="button" className={cx("nav-switch", viewMode === "models" && "active")} onClick={() => setViewMode("models")}>
-                模型配置
-              </button>
-            </>
-          )}
           <span className={cx("service-pill", isAdmin ? "ok" : "idle")}>
             <CheckCircle2 size={16} />
             {currentUser.username}：{isAdmin ? "管理员" : "普通用户"}
@@ -1207,6 +1423,21 @@ function App() {
         </div>
       </header>
 
+      {FEATURE_VIEWS.has(viewMode) && (
+        <nav className="feature-center-nav" aria-label="功能中心">
+          <strong><Settings2 size={17} />功能中心</strong>
+          <button type="button" className={cx(viewMode === "history" && "active")} onClick={() => setViewMode("history")}><Database size={15} />历史记录</button>
+          <button type="button" className={cx(viewMode === "incidents" && "active")} onClick={() => setViewMode("incidents")}><Bell size={15} />告警处置</button>
+          <button type="button" className={cx(viewMode === "account" && "active")} onClick={() => setViewMode("account")}><KeyRound size={15} />账号安全</button>
+          <button type="button" className={cx(viewMode === "whitelist" && "active")} onClick={() => setViewMode("whitelist")}><ShieldCheck size={15} />白名单</button>
+          {isAdmin && <button type="button" className={cx(viewMode === "cameras" && "active")} onClick={() => setViewMode("cameras")}><Camera size={15} />摄像头</button>}
+          {isAdmin && <button type="button" className={cx(viewMode === "models" && "active")} onClick={() => setViewMode("models")}><ServerCog size={15} />模型配置</button>}
+          {isAdmin && <button type="button" className={cx(viewMode === "users" && "active")} onClick={() => setViewMode("users")}><Users size={15} />用户管理</button>}
+          {isAdmin && <button type="button" className={cx(viewMode === "audit" && "active")} onClick={() => setViewMode("audit")}><FileText size={15} />审计日志</button>}
+        </nav>
+      )}
+      {FEATURE_VIEWS.has(viewMode) && featureMessage && <p className="feature-message">{featureMessage}</p>}
+
       {viewMode === "history" ? (
         <section className="history-page">
           <Panel
@@ -1214,14 +1445,14 @@ function App() {
             icon={<Database size={18} />}
             action={
               <div className="main-actions">
-                <a className="download-link" href={`${API_BASE}/api/history/export?format=csv`}>
+                <button type="button" className="download-link" onClick={() => downloadHistory("csv")}>
                   <Download size={15} />
                   导出 CSV
-                </a>
-                <a className="download-link" href={`${API_BASE}/api/history/export?format=json`}>
+                </button>
+                <button type="button" className="download-link" onClick={() => downloadHistory("json")}>
                   <Download size={15} />
                   导出 JSON
-                </a>
+                </button>
               </div>
             }
           >
@@ -1237,6 +1468,7 @@ function App() {
                 <span>白名单</span>
                 <span>拥堵</span>
                 <span>耗时</span>
+                <span>操作</span>
               </div>
               {history.length ? (
                 history.map((item) => (
@@ -1251,6 +1483,7 @@ function App() {
                     <span>{(item.whitelist_pass_count || 0) + "/" + (item.whitelist_block_count || 0)}</span>
                     <span>{congestionText(item.congestion_level)}</span>
                     <span>{item.inference_ms == null ? "--" : `${item.inference_ms} ms`}</span>
+                    <span>{isAdmin ? <button type="button" className="table-delete" onClick={() => deleteHistoryRecord(item.id)}><Trash2 size={13} />删除</button> : "只读"}</span>
                   </div>
                 ))
               ) : (
@@ -1350,6 +1583,110 @@ function App() {
                   </div>
                 )}
               </article>
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "account" ? (
+        <section className="feature-page account-page">
+          <Panel title="账号安全" icon={<KeyRound size={18} />}>
+            <div className="account-layout">
+              <div className="account-summary">
+                <span><strong>当前用户</strong><em>{currentUser.username}</em></span>
+                <span><strong>账号角色</strong><em>{isAdmin ? "管理员" : "普通用户"}</em></span>
+                <span><strong>最近登录</strong><em>{currentUser.last_login_at?.replace("T", " ") || "本次首次登录"}</em></span>
+                <span><strong>会话有效期</strong><em>12 小时</em></span>
+              </div>
+              <form className="account-password-form" onSubmit={changeOwnPassword}>
+                <h3>修改登录密码</h3>
+                <label htmlFor="oldPassword">原密码</label>
+                <input id="oldPassword" type="password" autoComplete="current-password" value={passwordForm.old_password} onChange={(event) => setPasswordForm((previous) => ({ ...previous, old_password: event.target.value }))} />
+                <label htmlFor="newPassword">新密码</label>
+                <input id="newPassword" type="password" autoComplete="new-password" minLength={6} value={passwordForm.new_password} onChange={(event) => setPasswordForm((previous) => ({ ...previous, new_password: event.target.value }))} />
+                <button type="submit" className="primary" disabled={busy || !passwordForm.old_password || passwordForm.new_password.length < 6}>修改密码</button>
+                <p className="hint">修改成功后，当前账号的所有登录会话都会失效，需要重新登录。</p>
+              </form>
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "incidents" ? (
+        <section className="feature-page incident-page">
+          <Panel title="告警处置中心" icon={<Bell size={18} />} action={<button type="button" onClick={loadFeatureData}><RefreshCcw size={15} />刷新</button>}>
+            <div className="incident-table">
+              <div className="incident-table-head"><span>时间</span><span>摄像头</span><span>类型</span><span>级别</span><span>告警内容</span><span>状态</span><span>处置备注</span><span>操作</span></div>
+              {incidents.length ? incidents.map((item) => (
+                <div className="incident-row" key={item.event_id}>
+                  <span>{item.created_at?.replace("T", " ")}</span>
+                  <strong>{item.camera_id || "--"}</strong>
+                  <span>{item.event_type}</span>
+                  <em className={cx("severity-tag", item.severity)}>{severityText(item.severity)}</em>
+                  <span title={item.description}>{item.description}</span>
+                  <em className={cx("incident-status", item.status)}>{({ pending: "待处理", confirmed: "已确认", resolved: "已解除", false_positive: "误报" })[item.status] || item.status}</em>
+                  <input value={incidentNotes[item.event_id] ?? item.note ?? ""} onChange={(event) => setIncidentNotes((previous) => ({ ...previous, [item.event_id]: event.target.value }))} placeholder="填写处置说明" />
+                  <div className="incident-actions">
+                    <button type="button" onClick={() => handleIncident(item.event_id, "confirmed")}>确认</button>
+                    <button type="button" onClick={() => handleIncident(item.event_id, "resolved")}>解除</button>
+                    <button type="button" onClick={() => handleIncident(item.event_id, "false_positive")}>误报</button>
+                  </div>
+                </div>
+              )) : <p className="empty-copy history-empty">暂无持久化告警。新的道路异常、禁停和白名单告警会自动进入处置中心。</p>}
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "cameras" && isAdmin ? (
+        <section className="feature-page camera-management-page">
+          <Panel title="摄像头设备管理" icon={<Camera size={18} />}>
+            <div className="camera-management-layout">
+              <form className="camera-management-form" onSubmit={saveManagedCamera}>
+                <h3>{cameraForm.camera_id ? `编辑 ${cameraForm.camera_id}` : "新增摄像头"}</h3>
+                <label htmlFor="managedCameraName">名称</label>
+                <input id="managedCameraName" required value={cameraForm.name} onChange={(event) => setCameraForm((previous) => ({ ...previous, name: event.target.value }))} />
+                <label htmlFor="managedCameraType">类型</label>
+                <select id="managedCameraType" value={cameraForm.type} onChange={(event) => setCameraForm((previous) => ({ ...previous, type: event.target.value }))}><option value="custom">自定义</option><option value="phone">手机</option><option value="esp32cam">ESP32-CAM</option><option value="usb">USB 摄像头</option><option value="sandtable">沙盘 RTSP</option></select>
+                <label htmlFor="managedCameraUrl">视频流地址</label>
+                <input id="managedCameraUrl" required value={cameraForm.stream_url} onChange={(event) => setCameraForm((previous) => ({ ...previous, stream_url: event.target.value }))} placeholder="RTSP、HTTP、文件路径或摄像头编号" />
+                <label htmlFor="managedCameraLocation">位置</label>
+                <input id="managedCameraLocation" required value={cameraForm.location} onChange={(event) => setCameraForm((previous) => ({ ...previous, location: event.target.value }))} />
+                <label htmlFor="managedCameraDescription">说明</label>
+                <textarea id="managedCameraDescription" value={cameraForm.description} onChange={(event) => setCameraForm((previous) => ({ ...previous, description: event.target.value }))} />
+                <div className="form-actions"><button type="submit" className="primary" disabled={busy}>保存配置</button>{cameraForm.camera_id && <button type="button" onClick={clearCameraForm}>取消编辑</button>}</div>
+              </form>
+              <div className="managed-camera-list">
+                <div className="managed-camera-head"><span>设备</span><span>位置</span><span>类型</span><span>状态</span><span>地址</span><span>操作</span></div>
+                {cameras.map((camera) => (
+                  <div className="managed-camera-row" key={camera.camera_id}>
+                    <strong>{camera.name}<small>{camera.camera_id}</small></strong>
+                    <span>{camera.location}</span><span>{camera.type}</span><em>{camera.status}</em><span title={camera.stream_url}>{camera.stream_url}</span>
+                    <div><button type="button" onClick={() => editManagedCamera(camera)}>编辑</button><button type="button" onClick={() => testManagedCamera(camera.camera_id)}>测试</button>{!camera.camera_id.startsWith("live") && <button type="button" className="danger" onClick={() => deleteManagedCamera(camera.camera_id)}>删除</button>}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "users" && isAdmin ? (
+        <section className="feature-page user-management-page">
+          <Panel title="用户与权限管理" icon={<Users size={18} />} action={<button type="button" onClick={loadFeatureData}><RefreshCcw size={15} />刷新</button>}>
+            <div className="user-table">
+              <div className="user-table-head"><span>用户名</span><span>角色</span><span>状态</span><span>创建时间</span><span>最后登录</span><span>重置密码</span><span>操作</span></div>
+              {systemUsers.length ? systemUsers.map((item) => (
+                <div className="user-row" key={item.id}>
+                  <strong>{item.username}</strong>
+                  <select value={item.role} disabled={item.id === currentUser.id} onChange={(event) => updateSystemUser(item.id, { role: event.target.value })}><option value="user">普通用户</option><option value="admin">管理员</option></select>
+                  <button type="button" className={cx("status-toggle", item.enabled && "enabled")} disabled={item.id === currentUser.id} onClick={() => updateSystemUser(item.id, { enabled: !item.enabled })}>{item.enabled ? "已启用" : "已禁用"}</button>
+                  <span>{item.created_at?.replace("T", " ")}</span><span>{item.last_login_at?.replace("T", " ") || "尚未登录"}</span>
+                  <div className="password-reset"><input type="password" value={resetPasswords[item.id] || ""} onChange={(event) => setResetPasswords((previous) => ({ ...previous, [item.id]: event.target.value }))} placeholder="至少 6 位" /><button type="button" onClick={() => resetSystemUserPassword(item.id)}>重置</button></div>
+                  <button type="button" className="table-delete" disabled={item.id === currentUser.id || item.username === "admin"} onClick={() => deleteSystemUser(item.id)}><Trash2 size={13} />删除</button>
+                </div>
+              )) : <p className="empty-copy history-empty">正在加载用户数据。</p>}
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "audit" && isAdmin ? (
+        <section className="feature-page audit-page">
+          <Panel title="系统操作审计" icon={<FileText size={18} />} action={<button type="button" onClick={loadFeatureData}><RefreshCcw size={15} />刷新</button>}>
+            <div className="audit-table">
+              <div className="audit-table-head"><span>时间</span><span>操作用户</span><span>动作</span><span>目标</span><span>详情</span></div>
+              {auditLogs.length ? auditLogs.map((item) => <div className="audit-row" key={item.id}><span>{item.created_at?.replace("T", " ")}</span><strong>{item.username}</strong><em>{item.action}</em><span>{item.target || "--"}</span><span title={item.detail}>{item.detail || "--"}</span></div>) : <p className="empty-copy history-empty">暂无审计记录。白名单、模型、摄像头、用户和历史数据变更会记录在这里。</p>}
             </div>
           </Panel>
         </section>

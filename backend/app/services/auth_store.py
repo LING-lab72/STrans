@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import os
 import secrets
 import sqlite3
 import string
@@ -12,7 +13,7 @@ from typing import Any
 
 
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = os.getenv("STRANS_ADMIN_PASSWORD", "admin123")
 
 
 class AuthStore:
@@ -36,7 +37,8 @@ class AuthStore:
                     password_hash TEXT NOT NULL,
                     role TEXT NOT NULL DEFAULT 'user',
                     created_at TEXT NOT NULL,
-                    last_login_at TEXT
+                    last_login_at TEXT,
+                    enabled INTEGER NOT NULL DEFAULT 1
                 )
                 """
             )
@@ -52,6 +54,23 @@ class AuthStore:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at)")
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    created_at TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target TEXT,
+                    detail TEXT
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at DESC)")
             if self.get_user_by_username(ADMIN_USERNAME) is None:
                 self.create_user(ADMIN_USERNAME, ADMIN_PASSWORD, role="admin")
 
@@ -79,12 +98,13 @@ class AuthStore:
             "role": row["role"],
             "created_at": row["created_at"],
             "last_login_at": row["last_login_at"],
+            "enabled": bool(row["enabled"]) if "enabled" in row.keys() else True,
         }
 
     def get_user_by_username(self, username: str) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT id, username, password_hash, role, created_at, last_login_at FROM users WHERE username = ?",
+                "SELECT id, username, password_hash, role, created_at, last_login_at, enabled FROM users WHERE username = ?",
                 (username.strip(),),
             ).fetchone()
         return dict(row) if row else None
@@ -110,20 +130,20 @@ class AuthStore:
             except sqlite3.IntegrityError as exc:
                 raise ValueError("用户名已存在") from exc
             row = conn.execute(
-                "SELECT id, username, role, created_at, last_login_at FROM users WHERE id = ?",
+                "SELECT id, username, role, created_at, last_login_at, enabled FROM users WHERE id = ?",
                 (cursor.lastrowid,),
             ).fetchone()
         return self._row_to_user(row) or {}
 
     def authenticate(self, username: str, password: str) -> dict[str, Any] | None:
         row = self.get_user_by_username(username)
-        if not row or not self._verify_password(password, row["password_hash"]):
+        if not row or not bool(row.get("enabled", 1)) or not self._verify_password(password, row["password_hash"]):
             return None
         now = datetime.now().isoformat(timespec="seconds")
         with self._connect() as conn:
             conn.execute("UPDATE users SET last_login_at = ? WHERE id = ?", (now, row["id"]))
             user = conn.execute(
-                "SELECT id, username, role, created_at, last_login_at FROM users WHERE id = ?",
+                "SELECT id, username, role, created_at, last_login_at, enabled FROM users WHERE id = ?",
                 (row["id"],),
             ).fetchone()
         return self._row_to_user(user)
@@ -146,10 +166,10 @@ class AuthStore:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT users.id, users.username, users.role, users.created_at, users.last_login_at
+                SELECT users.id, users.username, users.role, users.created_at, users.last_login_at, users.enabled
                 FROM user_sessions
                 JOIN users ON users.id = user_sessions.user_id
-                WHERE user_sessions.token = ? AND user_sessions.expires_at > ?
+                WHERE user_sessions.token = ? AND user_sessions.expires_at > ? AND users.enabled = 1
                 """,
                 (token, now),
             ).fetchone()
@@ -160,6 +180,83 @@ class AuthStore:
             return
         with self._connect() as conn:
             conn.execute("DELETE FROM user_sessions WHERE token = ?", (token,))
+
+    def list_users(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, username, role, created_at, last_login_at, enabled FROM users ORDER BY id"
+            ).fetchall()
+        return [self._row_to_user(row) or {} for row in rows]
+
+    def update_user(self, user_id: int, *, role: str | None = None, enabled: bool | None = None) -> dict[str, Any]:
+        fields: list[str] = []
+        params: list[Any] = []
+        if role is not None:
+            if role not in {"admin", "user"}:
+                raise ValueError("无效的用户角色")
+            fields.append("role = ?")
+            params.append(role)
+        if enabled is not None:
+            fields.append("enabled = ?")
+            params.append(1 if enabled else 0)
+        if not fields:
+            raise ValueError("没有需要更新的字段")
+        params.append(user_id)
+        with self._connect() as conn:
+            cursor = conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", params)
+            if cursor.rowcount == 0:
+                raise ValueError("用户不存在")
+            if enabled is False:
+                conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+            row = conn.execute(
+                "SELECT id, username, role, created_at, last_login_at, enabled FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+        return self._row_to_user(row) or {}
+
+    def change_password(self, user_id: int, old_password: str, new_password: str) -> None:
+        if len(new_password) < 6:
+            raise ValueError("新密码至少需要 6 位")
+        with self._connect() as conn:
+            row = conn.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,)).fetchone()
+            if row is None or not self._verify_password(old_password, row["password_hash"]):
+                raise ValueError("原密码不正确")
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (self._hash_password(new_password), user_id))
+            conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+
+    def reset_password(self, user_id: int, new_password: str) -> None:
+        if len(new_password) < 6:
+            raise ValueError("新密码至少需要 6 位")
+        with self._connect() as conn:
+            cursor = conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (self._hash_password(new_password), user_id))
+            if cursor.rowcount == 0:
+                raise ValueError("用户不存在")
+            conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+
+    def delete_user(self, user_id: int) -> None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+            if row is None:
+                raise ValueError("用户不存在")
+            if row["username"] == ADMIN_USERNAME:
+                raise ValueError("不能删除默认管理员账号")
+            conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    def add_audit(self, username: str, action: str, target: str = "", detail: str = "") -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO audit_logs (created_at, username, action, target, detail) VALUES (?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"), username, action, target, detail),
+            )
+
+    def list_audit(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, created_at, username, action, target, detail FROM audit_logs ORDER BY id DESC LIMIT ?",
+                (max(1, min(limit, 500)),),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def new_captcha(self) -> dict[str, str]:
         alphabet = string.ascii_uppercase + string.digits

@@ -1659,9 +1659,65 @@ select:focus {
 .history-page,
 .whitelist-page,
 .model-page,
-.report-page {
+.report-page,
+.feature-page {
   max-width: 1880px;
   margin: 10px auto 0;
+}
+
+.feature-center-nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 1880px;
+  margin: 10px auto 0;
+  padding: 8px;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #c3d1df;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(46, 71, 98, 0.08);
+}
+
+.feature-center-nav strong,
+.feature-center-nav button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: #35536d;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.feature-center-nav strong {
+  color: #0f2d45;
+  padding-right: 14px;
+  border-right-color: #d9e4ed;
+  border-radius: 0;
+}
+
+.feature-center-nav button:hover,
+.feature-center-nav button.active {
+  color: #075985;
+  background: #eaf7fd;
+  border-color: #9bd8ef;
+}
+
+.feature-message {
+  max-width: 1880px;
+  margin: 8px auto 0;
+  padding: 9px 12px;
+  color: #075985;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 12px;
 }
 
 .report-page-layout {
@@ -1847,9 +1903,24 @@ select:focus {
 .history-table-head,
 .history-row {
   display: grid;
-  grid-template-columns: 1.35fr 0.65fr 1.15fr 0.42fr 0.5fr 0.42fr 1.05fr 0.55fr 0.55fr 0.6fr;
+  grid-template-columns: 1.35fr 0.65fr 1.15fr 0.42fr 0.5fr 0.42fr 1.05fr 0.55fr 0.55fr 0.6fr 76px;
   gap: 10px;
   align-items: center;
+}
+
+.table-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: #b91c1c;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .history-table-head {
@@ -2063,6 +2134,236 @@ select:focus {
   font-size: 13px;
 }
 
+.account-layout,
+.camera-management-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 2fr);
+  gap: 14px;
+  padding: 14px;
+}
+
+.account-summary,
+.account-password-form,
+.camera-management-form {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+  background: #f8fbff;
+  border: 1px solid #d3e1ed;
+  border-radius: 8px;
+}
+
+.account-summary span {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #d8e4ee;
+  border-radius: 7px;
+}
+
+.account-summary em {
+  color: #0f5f91;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.account-password-form h3,
+.camera-management-form h3 {
+  margin: 0 0 2px;
+  color: #0f2d45;
+  font-size: 16px;
+}
+
+.account-password-form label,
+.camera-management-form label {
+  color: #47627b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.camera-management-form textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions button {
+  flex: 1;
+}
+
+.managed-camera-list,
+.incident-table,
+.user-table,
+.audit-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.managed-camera-head,
+.managed-camera-row,
+.incident-table-head,
+.incident-row,
+.user-table-head,
+.user-row,
+.audit-table-head,
+.audit-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  min-width: 980px;
+  padding: 9px 12px;
+  color: #415970;
+  border-right: 1px solid #d3e1ed;
+  border-bottom: 1px solid #d3e1ed;
+  border-left: 1px solid #d3e1ed;
+  font-size: 12px;
+}
+
+.managed-camera-head,
+.incident-table-head,
+.user-table-head,
+.audit-table-head {
+  min-height: 42px;
+  color: #52687f;
+  background: #f3f8fc;
+  border-top: 1px solid #d3e1ed;
+  border-radius: 8px 8px 0 0;
+  font-weight: 900;
+}
+
+.managed-camera-row:nth-child(odd),
+.incident-row:nth-child(odd),
+.user-row:nth-child(odd),
+.audit-row:nth-child(odd) {
+  background: #fbfdff;
+}
+
+.managed-camera-head,
+.managed-camera-row {
+  grid-template-columns: 1fr 0.8fr 0.55fr 0.55fr 1.8fr 190px;
+}
+
+.managed-camera-row strong {
+  display: grid;
+  gap: 2px;
+  color: #12304a;
+}
+
+.managed-camera-row small {
+  color: #7890a4;
+  font-weight: 600;
+}
+
+.managed-camera-row > span,
+.audit-row > span,
+.incident-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.managed-camera-row > div,
+.incident-actions,
+.password-reset {
+  display: flex;
+  gap: 5px;
+}
+
+.managed-camera-row button,
+.incident-actions button,
+.password-reset button {
+  min-height: 30px;
+  padding: 0 8px;
+  color: #155e75;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.managed-camera-row button.danger {
+  color: #b91c1c;
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+
+.incident-table,
+.user-table,
+.audit-table {
+  padding: 14px;
+}
+
+.incident-table-head,
+.incident-row {
+  grid-template-columns: 1.1fr 0.6fr 0.75fr 0.5fr 1.8fr 0.65fr 1.2fr 160px;
+}
+
+.incident-status,
+.severity-tag {
+  width: fit-content;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.severity-tag.info,
+.incident-status.confirmed { color: #075985; background: #e0f2fe; }
+.severity-tag.warning,
+.incident-status.pending { color: #9a3412; background: #ffedd5; }
+.severity-tag.critical { color: #b91c1c; background: #fee2e2; }
+.incident-status.resolved { color: #166534; background: #dcfce7; }
+.incident-status.false_positive { color: #475569; background: #e2e8f0; }
+
+.user-table-head,
+.user-row {
+  grid-template-columns: 0.8fr 0.7fr 0.65fr 1fr 1fr 1.4fr 76px;
+}
+
+.status-toggle {
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 9px;
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.status-toggle.enabled {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.password-reset input {
+  min-width: 0;
+  width: 105px;
+}
+
+.audit-table-head,
+.audit-row {
+  grid-template-columns: 1.1fr 0.7fr 0.9fr 1fr 2fr;
+}
+
+.audit-row em {
+  color: #075985;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .model-status-list strong {
   color: #0f2d45;
 }
@@ -2215,6 +2516,11 @@ select:focus {
 
   .resource-gauge:nth-child(even) {
     border-right: 0;
+  }
+
+  .account-layout,
+  .camera-management-layout {
+    grid-template-columns: 1fr;
   }
 
   .history-table-head,

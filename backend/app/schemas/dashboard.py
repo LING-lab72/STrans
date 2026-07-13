@@ -128,11 +128,31 @@ class AuthUser(BaseModel):
     role: Literal["admin", "user"]
     created_at: str | None = None
     last_login_at: str | None = None
+    enabled: bool = True
 
 
 class AuthResponse(BaseModel):
     token: str
     user: AuthUser
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=6)
+
+
+class UserAdminUpdateRequest(BaseModel):
+    role: Literal["admin", "user"] | None = None
+    enabled: bool | None = None
+
+
+class PasswordResetRequest(BaseModel):
+    new_password: str = Field(min_length=6)
+
+
+class IncidentUpdateRequest(BaseModel):
+    status: Literal["pending", "confirmed", "resolved", "false_positive"]
+    note: str = Field(default="", max_length=300)
 
 
 class GateDecision(BaseModel):

@@ -1,8 +1,11 @@
 ﻿from __future__ import annotations
 
 import threading
+import sqlite3
+import time
+from pathlib import Path
 
-from app.schemas.video import CameraCreateRequest, CameraSource, CameraStatusItem, VideoStatus
+from app.schemas.video import CameraCreateRequest, CameraSource, CameraStatusItem, CameraUpdateRequest, VideoStatus
 from app.services.video_stream import VideoStreamService
 
 
@@ -25,12 +28,60 @@ MAX_ACTIVE_STREAMS = 4
 
 
 class CameraHub:
-    def __init__(self) -> None:
+    def __init__(self, db_path: str | Path = "data/traffic_analysis.db") -> None:
         self._lock = threading.RLock()
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._sources: dict[str, CameraSource] = {item.camera_id: item for item in SANDTABLE_CAMERAS}
         self._streams: dict[str, VideoStreamService] = {item.camera_id: VideoStreamService() for item in SANDTABLE_CAMERAS}
         self.current_camera_id: str = "live1"
         self._start_order: list[str] = []
+        self._init_db()
+        self._load_custom_sources()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS camera_sources (
+                    camera_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    stream_url TEXT NOT NULL,
+                    location TEXT NOT NULL,
+                    description TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+                )
+                """
+            )
+
+    def _load_custom_sources(self) -> None:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT camera_id, name, type, stream_url, location, description FROM camera_sources").fetchall()
+        for row in rows:
+            source = CameraSource(**dict(row), status="offline")
+            self._sources[source.camera_id] = source
+            self._streams[source.camera_id] = VideoStreamService()
+
+    def _persist_source(self, source: CameraSource) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO camera_sources (camera_id, name, type, stream_url, location, description)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(camera_id) DO UPDATE SET
+                    name = excluded.name, type = excluded.type, stream_url = excluded.stream_url,
+                    location = excluded.location, description = excluded.description,
+                    updated_at = datetime('now', 'localtime')
+                """,
+                (source.camera_id, source.name, source.type, source.stream_url, source.location, source.description),
+            )
 
     def list_sources(self) -> list[CameraSource]:
         result = []
@@ -59,11 +110,63 @@ class CameraHub:
 
     def add_source(self, req: CameraCreateRequest) -> CameraSource:
         with self._lock:
-            camera_id = f"custom{len([key for key in self._sources if key.startswith('custom')]) + 1}"
+            suffix = 1
+            while f"custom{suffix}" in self._sources:
+                suffix += 1
+            camera_id = f"custom{suffix}"
             source = CameraSource(camera_id=camera_id, **req.model_dump(), status="offline")
             self._sources[camera_id] = source
             self._streams[camera_id] = VideoStreamService()
+            self._persist_source(source)
             return source
+
+    def update_source(self, camera_id: str, req: CameraUpdateRequest) -> CameraSource:
+        with self._lock:
+            if camera_id not in self._sources:
+                raise KeyError(camera_id)
+            current = self._sources[camera_id]
+            updates = {key: value for key, value in req.model_dump().items() if value is not None}
+            if updates.get("stream_url") and self._streams[camera_id].status().running:
+                self._streams[camera_id].stop()
+                self._start_order = [item for item in self._start_order if item != camera_id]
+            source = current.model_copy(update={**updates, "status": "offline", "selected": False})
+            self._sources[camera_id] = source
+            self._persist_source(source)
+            return source
+
+    def delete_source(self, camera_id: str) -> None:
+        if camera_id.startswith("live"):
+            raise ValueError("预置沙盘摄像头不能删除")
+        with self._lock:
+            if camera_id not in self._sources:
+                raise KeyError(camera_id)
+            self._streams[camera_id].stop()
+            self._streams.pop(camera_id, None)
+            self._sources.pop(camera_id, None)
+            self._start_order = [item for item in self._start_order if item != camera_id]
+            with self._connect() as conn:
+                conn.execute("DELETE FROM camera_sources WHERE camera_id = ?", (camera_id,))
+
+    def test_source(self, camera_id: str, timeout_seconds: float = 4.0) -> dict[str, object]:
+        if camera_id not in self._sources:
+            raise KeyError(camera_id)
+        source = self._sources[camera_id]
+        probe = VideoStreamService()
+        probe.start(source.stream_url)
+        deadline = time.monotonic() + max(1.0, min(timeout_seconds, 8.0))
+        status = probe.status()
+        while time.monotonic() < deadline and not status.connected and not status.last_error:
+            time.sleep(0.1)
+            status = probe.status()
+        probe.stop()
+        return {
+            "ok": bool(status.connected),
+            "camera_id": camera_id,
+            "message": "连接成功" if status.connected else (status.last_error or "连接超时"),
+            "frame_width": status.frame_width,
+            "frame_height": status.frame_height,
+            "fps": status.fps,
+        }
 
     def start(self, camera_id: str) -> VideoStatus:
         with self._lock:

@@ -34,6 +34,14 @@ class CameraCreateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=200)
 
 
+class CameraUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    type: CameraType | None = None
+    stream_url: str | None = Field(default=None, min_length=1, max_length=500)
+    location: str | None = Field(default=None, min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=200)
+
+
 class VideoStatus(BaseModel):
     running: bool
     source: str | None = None

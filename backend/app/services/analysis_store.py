@@ -59,6 +59,51 @@ class AnalysisStore:
                     pass
             conn.execute("CREATE INDEX IF NOT EXISTS idx_analysis_created_at ON analysis_records(created_at DESC)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_analysis_camera_id ON analysis_records(camera_id)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS alert_incidents (
+                    event_id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    camera_id TEXT,
+                    event_type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    handled_by TEXT,
+                    handled_at TEXT,
+                    note TEXT
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_incident_created_at ON alert_incidents(created_at DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_incident_status ON alert_incidents(status)")
+            recent_payloads = conn.execute(
+                "SELECT camera_id, payload_json FROM analysis_records ORDER BY id DESC LIMIT 200"
+            ).fetchall()
+            for record in recent_payloads:
+                try:
+                    payload = json.loads(record["payload_json"])
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                for event in payload.get("events") or []:
+                    event_id = str(event.get("event_id") or "").strip()
+                    if not event_id:
+                        continue
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO alert_incidents (
+                            event_id, created_at, camera_id, event_type, severity, description
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event_id,
+                            event.get("created_at") or payload.get("timestamp") or "",
+                            event.get("camera_id") or record["camera_id"],
+                            event.get("type") or "unknown",
+                            event.get("severity") or "info",
+                            event.get("description") or "",
+                        ),
+                    )
 
     def save(self, result: AnalysisResult) -> int:
         stats = result.traffic_stats
@@ -98,6 +143,15 @@ class AnalysisStore:
                     json.dumps(payload, ensure_ascii=False),
                 ),
             )
+            for event in result.events:
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO alert_incidents (
+                        event_id, created_at, camera_id, event_type, severity, description
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (event.event_id, event.created_at, event.camera_id or result.camera_id, event.type, event.severity, event.description),
+                )
             return int(cursor.lastrowid)
 
     def list_records(self, limit: int = 30, camera_id: str | None = None) -> list[dict[str, Any]]:
@@ -154,3 +208,62 @@ class AnalysisStore:
     def export_json(self, limit: int = 1000) -> str:
         rows = self.list_records(limit=limit)
         return json.dumps({"items": rows}, ensure_ascii=False, indent=2)
+
+    def count_records(self, camera_id: str | None = None) -> int:
+        params: list[Any] = []
+        where = ""
+        if camera_id:
+            where = "WHERE camera_id = ?"
+            params.append(camera_id)
+        with self._connect() as conn:
+            row = conn.execute(f"SELECT COUNT(*) AS total FROM analysis_records {where}", params).fetchone()
+        return int(row["total"] if row else 0)
+
+    def delete_record(self, record_id: int) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute("DELETE FROM analysis_records WHERE id = ?", (record_id,))
+        return cursor.rowcount > 0
+
+    def purge_records(self, before: str | None = None) -> int:
+        with self._connect() as conn:
+            if before:
+                cursor = conn.execute("DELETE FROM analysis_records WHERE created_at < ?", (before,))
+            else:
+                cursor = conn.execute("DELETE FROM analysis_records")
+        return int(cursor.rowcount)
+
+    def list_incidents(self, limit: int = 100, status: str | None = None) -> list[dict[str, Any]]:
+        params: list[Any] = []
+        where = ""
+        if status:
+            where = "WHERE status = ?"
+            params.append(status)
+        params.append(max(1, min(limit, 500)))
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT event_id, created_at, camera_id, event_type, severity, description,
+                       status, handled_by, handled_at, note
+                FROM alert_incidents {where}
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                params,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def update_incident(self, event_id: str, status: str, handled_by: str, note: str = "") -> dict[str, Any]:
+        if status not in {"pending", "confirmed", "resolved", "false_positive"}:
+            raise ValueError("无效的告警状态")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE alert_incidents
+                SET status = ?, handled_by = ?, handled_at = datetime('now', 'localtime'), note = ?
+                WHERE event_id = ?
+                """,
+                (status, handled_by, note.strip(), event_id),
+            )
+            if cursor.rowcount == 0:
+                raise ValueError("告警记录不存在")
+            row = conn.execute("SELECT * FROM alert_incidents WHERE event_id = ?", (event_id,)).fetchone()
+        return dict(row) if row else {}
