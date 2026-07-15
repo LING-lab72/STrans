@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+import shutil
 import time
 from datetime import datetime
 from numbers import Real
@@ -12,6 +13,7 @@ import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+from ultralytics.utils.downloads import attempt_download_asset
 
 from app.schemas.dashboard import AnalysisResult, DetectionBox, TrafficEvent, TrafficStats
 from app.services.whitelist import WhitelistDecision, decide_plate
@@ -46,6 +48,21 @@ PERSON_CLASS_NAMES = {
     "pedestrian",
     "people",
 }
+
+
+def ensure_auto_model() -> Path:
+    """Download the official primary YOLO weights only when no local model exists."""
+    if AUTO_MODEL.exists():
+        return AUTO_MODEL
+    if VISDRONE_MODEL.exists():
+        return VISDRONE_MODEL
+    AUTO_MODEL.parent.mkdir(parents=True, exist_ok=True)
+    downloaded = Path(attempt_download_asset(AUTO_MODEL.name))
+    if not downloaded.exists():
+        raise RuntimeError("Unable to download the primary YOLO model.")
+    if downloaded.resolve() != AUTO_MODEL.resolve():
+        shutil.copy2(downloaded, AUTO_MODEL)
+    return AUTO_MODEL
 
 # The live3 road trapezoid was measured on the sandtable as 40 cm x 70 cm.
 # Points are normalized from the original 1920 x 1080 frame so the calibration
@@ -345,7 +362,7 @@ class LocalModelService:
             return AUTO_MODEL
         if VISDRONE_MODEL.exists():
             return VISDRONE_MODEL
-        raise RuntimeError("No local YOLO weights found in backend/data.")
+        return ensure_auto_model()
 
     def _load_model(self, model_name: str = "auto") -> YOLO:
         path = self._model_path(model_name)
