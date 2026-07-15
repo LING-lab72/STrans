@@ -1,0 +1,35 @@
+{
+  "schema": "road_logic_modeler.v1",
+  "name": "road_internal_node_fork_sample",
+  "world": { "width": 600, "height": 320, "unit": "cm", "gridSize": 20 },
+  "nodes": [
+    { "id": "west_1", "name": "主路入口 1", "type": "boundary", "x": 40, "y": 130, "z": 0 },
+    { "id": "west_2", "name": "主路入口 2", "type": "boundary", "x": 40, "y": 170, "z": 0 },
+    { "id": "fork_1", "name": "岔口内侧节点 1", "type": "lane_point", "x": 260, "y": 130, "z": 0, "groupId": "fork_section" },
+    { "id": "fork_2", "name": "岔口内侧节点 2", "type": "lane_point", "x": 260, "y": 170, "z": 0, "groupId": "fork_section" },
+    { "id": "straight_1", "name": "直行侧节点 1", "type": "lane_point", "x": 440, "y": 130, "z": 0, "groupId": "straight_section" },
+    { "id": "straight_2", "name": "直行侧节点 2", "type": "lane_point", "x": 440, "y": 170, "z": 0, "groupId": "straight_section" },
+    { "id": "exit_1", "name": "支路侧节点", "type": "lane_point", "x": 420, "y": 250, "z": 0, "groupId": "exit_section" },
+    { "id": "east_1", "name": "直行出口 1", "type": "boundary", "x": 560, "y": 130, "z": 0 },
+    { "id": "east_2", "name": "直行出口 2", "type": "boundary", "x": 560, "y": 170, "z": 0 },
+    { "id": "south", "name": "支路出口", "type": "boundary", "x": 440, "y": 310, "z": 0 }
+  ],
+  "lanes": [
+    { "id": "approach_1", "name": "主路车道 1", "endpoint1": "west_1", "endpoint2": "fork_1", "direction": "1-2", "width": 28 },
+    { "id": "approach_2", "name": "主路车道 2", "endpoint1": "west_2", "endpoint2": "fork_2", "direction": "1-2", "width": 28 },
+    { "id": "straight_1_lane", "name": "直行车道 1", "endpoint1": "fork_1", "endpoint2": "straight_1", "direction": "1-2", "width": 28 },
+    { "id": "straight_2_lane", "name": "直行车道 2", "endpoint1": "fork_2", "endpoint2": "straight_2", "direction": "1-2", "width": 28 },
+    { "id": "exit_lane", "name": "分流支路", "endpoint1": "fork_2", "endpoint2": "exit_1", "direction": "1-2", "width": 28 },
+    { "id": "straight_1_out", "name": "直行出口 1", "endpoint1": "straight_1", "endpoint2": "east_1", "direction": "1-2", "width": 28 },
+    { "id": "straight_2_out", "name": "直行出口 2", "endpoint1": "straight_2", "endpoint2": "east_2", "direction": "1-2", "width": 28 },
+    { "id": "exit_out", "name": "支路出口", "endpoint1": "exit_1", "endpoint2": "south", "direction": "1-2", "width": 28 }
+  ],
+  "laneEndpointGroups": [
+    { "id": "fork_section", "name": "分流前道路截面", "nodeIds": ["fork_1", "fork_2"], "order": "manual" },
+    { "id": "straight_section", "name": "直行道路截面", "nodeIds": ["straight_1", "straight_2"], "order": "manual" },
+    { "id": "exit_section", "name": "支路道路截面", "nodeIds": ["exit_1"], "order": "manual" }
+  ],
+  "buildings": [],
+  "cameraCalibrations": [],
+  "cameras": []
+}

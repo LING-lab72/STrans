@@ -1,0 +1,526 @@
+{
+  "schema": "road_logic_modeler.confirmed-node-flow.v1",
+  "sourceSchema": "road_logic_modeler.node-flow-template.v1",
+  "laneDirectionOverrides": [
+    {
+      "laneId": "lane_76",
+      "originalSourceNodeId": "node_23",
+      "originalTargetNodeId": "node_15",
+      "sourceNodeId": "node_15",
+      "targetNodeId": "node_23"
+    },
+    {
+      "laneId": "lane_77",
+      "originalSourceNodeId": "node_23",
+      "originalTargetNodeId": "node_15",
+      "sourceNodeId": "node_15",
+      "targetNodeId": "node_23"
+    }
+  ],
+  "nodes": [
+    {
+      "nodeId": "node_5",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_20::node_5->road::node_3::node_5",
+          "fromRoadBundleId": "road::node_20::node_5",
+          "toRoadBundleId": "road::node_3::node_5",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_66",
+              "toLaneId": "lane_10"
+            },
+            {
+              "fromLaneId": "lane_65",
+              "toLaneId": "lane_11"
+            },
+            {
+              "fromLaneId": "lane_64",
+              "toLaneId": "lane_11"
+            }
+          ]
+        },
+        {
+          "id": "road::node_20::node_5->road::node_5::node_7",
+          "fromRoadBundleId": "road::node_20::node_5",
+          "toRoadBundleId": "road::node_5::node_7",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_66",
+              "toLaneId": "lane_15"
+            },
+            {
+              "fromLaneId": "lane_65",
+              "toLaneId": "lane_14"
+            },
+            {
+              "fromLaneId": "lane_64",
+              "toLaneId": "lane_14"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_6",
+      "classification": "simple_continuation",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_25::node_6->road::node_3::node_6",
+          "fromRoadBundleId": "road::node_25::node_6",
+          "toRoadBundleId": "road::node_3::node_6",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_87",
+              "toLaneId": "lane_16"
+            },
+            {
+              "fromLaneId": "lane_93",
+              "toLaneId": "lane_16"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_7",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_5::node_7->road::node_21::node_7",
+          "fromRoadBundleId": "road::node_5::node_7",
+          "toRoadBundleId": "road::node_21::node_7",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_14",
+              "toLaneId": "lane_73"
+            },
+            {
+              "fromLaneId": "lane_15",
+              "toLaneId": "lane_72"
+            }
+          ]
+        },
+        {
+          "id": "road::node_21::node_7->road::node_25::node_7",
+          "fromRoadBundleId": "road::node_21::node_7",
+          "toRoadBundleId": "road::node_25::node_7",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_83",
+              "toLaneId": "lane_86"
+            },
+            {
+              "fromLaneId": "lane_84",
+              "toLaneId": "lane_85"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_8",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_3::node_8->road::node_27::node_8",
+          "fromRoadBundleId": "road::node_3::node_8",
+          "toRoadBundleId": "road::node_27::node_8",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_17",
+              "toLaneId": "lane_96"
+            },
+            {
+              "fromLaneId": "lane_26",
+              "toLaneId": "lane_96"
+            }
+          ]
+        },
+        {
+          "id": "road::node_3::node_8->road::node_26::node_8",
+          "fromRoadBundleId": "road::node_3::node_8",
+          "toRoadBundleId": "road::node_26::node_8",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_17",
+              "toLaneId": "lane_95"
+            },
+            {
+              "fromLaneId": "lane_26",
+              "toLaneId": "lane_94"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_15",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_15::node_23->road::node_1::node_15",
+          "fromRoadBundleId": "road::node_15::node_23",
+          "toRoadBundleId": "road::node_1::node_15",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_74",
+              "toLaneId": "lane_35"
+            },
+            {
+              "fromLaneId": "lane_75",
+              "toLaneId": "lane_36"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_23->road::node_15::node_21",
+          "fromRoadBundleId": "road::node_15::node_23",
+          "toRoadBundleId": "road::node_15::node_21",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_74",
+              "toLaneId": "lane_90"
+            },
+            {
+              "fromLaneId": "lane_75",
+              "toLaneId": "lane_90"
+            }
+          ]
+        },
+        {
+          "id": "road::node_1::node_15->road::node_15::node_23",
+          "fromRoadBundleId": "road::node_1::node_15",
+          "toRoadBundleId": "road::node_15::node_23",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_37",
+              "toLaneId": "lane_76"
+            },
+            {
+              "fromLaneId": "lane_38",
+              "toLaneId": "lane_77"
+            }
+          ]
+        },
+        {
+          "id": "road::node_1::node_15->road::node_15::node_21",
+          "fromRoadBundleId": "road::node_1::node_15",
+          "toRoadBundleId": "road::node_15::node_21",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_37",
+              "toLaneId": "lane_90"
+            },
+            {
+              "fromLaneId": "lane_38",
+              "toLaneId": "lane_90"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_21->road::node_15::node_23",
+          "fromRoadBundleId": "road::node_15::node_21",
+          "toRoadBundleId": "road::node_15::node_23",
+          "mode": "split",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_89",
+              "toLaneId": "lane_76"
+            },
+            {
+              "fromLaneId": "lane_89",
+              "toLaneId": "lane_77"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_21->road::node_1::node_15",
+          "fromRoadBundleId": "road::node_15::node_21",
+          "toRoadBundleId": "road::node_1::node_15",
+          "mode": "split",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_89",
+              "toLaneId": "lane_35"
+            },
+            {
+              "fromLaneId": "lane_89",
+              "toLaneId": "lane_36"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_20",
+      "classification": "simple_corner",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_20::node_4->road::node_20::node_5",
+          "fromRoadBundleId": "road::node_20::node_4",
+          "toRoadBundleId": "road::node_20::node_5",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_61",
+              "toLaneId": "lane_64"
+            },
+            {
+              "fromLaneId": "lane_62",
+              "toLaneId": "lane_65"
+            },
+            {
+              "fromLaneId": "lane_63",
+              "toLaneId": "lane_66"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_21",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_21::node_7->road::node_15::node_21",
+          "fromRoadBundleId": "road::node_21::node_7",
+          "toRoadBundleId": "road::node_15::node_21",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_72",
+              "toLaneId": "lane_89"
+            },
+            {
+              "fromLaneId": "lane_73",
+              "toLaneId": "lane_89"
+            }
+          ]
+        },
+        {
+          "id": "road::node_21::node_7->road::node_21::node_9",
+          "fromRoadBundleId": "road::node_21::node_7",
+          "toRoadBundleId": "road::node_21::node_9",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_72",
+              "toLaneId": "lane_71"
+            },
+            {
+              "fromLaneId": "lane_73",
+              "toLaneId": "lane_70"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_21->road::node_21::node_7",
+          "fromRoadBundleId": "road::node_15::node_21",
+          "toRoadBundleId": "road::node_21::node_7",
+          "mode": "split",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_90",
+              "toLaneId": "lane_83"
+            },
+            {
+              "fromLaneId": "lane_90",
+              "toLaneId": "lane_84"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_21->road::node_21::node_9",
+          "fromRoadBundleId": "road::node_15::node_21",
+          "toRoadBundleId": "road::node_21::node_9",
+          "mode": "split",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_90",
+              "toLaneId": "lane_70"
+            },
+            {
+              "fromLaneId": "lane_90",
+              "toLaneId": "lane_71"
+            }
+          ]
+        },
+        {
+          "id": "road::node_21::node_9->road::node_21::node_7",
+          "fromRoadBundleId": "road::node_21::node_9",
+          "toRoadBundleId": "road::node_21::node_7",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_68",
+              "toLaneId": "lane_84"
+            },
+            {
+              "fromLaneId": "lane_69",
+              "toLaneId": "lane_83"
+            }
+          ]
+        },
+        {
+          "id": "road::node_21::node_9->road::node_15::node_21",
+          "fromRoadBundleId": "road::node_21::node_9",
+          "toRoadBundleId": "road::node_15::node_21",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_68",
+              "toLaneId": "lane_89"
+            },
+            {
+              "fromLaneId": "lane_69",
+              "toLaneId": "lane_89"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_23",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_2::node_23->road::node_15::node_23",
+          "fromRoadBundleId": "road::node_2::node_23",
+          "toRoadBundleId": "road::node_15::node_23",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_80",
+              "toLaneId": "lane_75"
+            },
+            {
+              "fromLaneId": "lane_81",
+              "toLaneId": "lane_74"
+            }
+          ]
+        },
+        {
+          "id": "road::node_2::node_23->road::node_22::node_23",
+          "fromRoadBundleId": "road::node_2::node_23",
+          "toRoadBundleId": "road::node_22::node_23",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_80",
+              "toLaneId": "lane_82"
+            },
+            {
+              "fromLaneId": "lane_81",
+              "toLaneId": "lane_82"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_23->road::node_2::node_23",
+          "fromRoadBundleId": "road::node_15::node_23",
+          "toRoadBundleId": "road::node_2::node_23",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_76",
+              "toLaneId": "lane_79"
+            },
+            {
+              "fromLaneId": "lane_77",
+              "toLaneId": "lane_78"
+            }
+          ]
+        },
+        {
+          "id": "road::node_15::node_23->road::node_22::node_23",
+          "fromRoadBundleId": "road::node_15::node_23",
+          "toRoadBundleId": "road::node_22::node_23",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_76",
+              "toLaneId": "lane_82"
+            },
+            {
+              "fromLaneId": "lane_77",
+              "toLaneId": "lane_82"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "node_25",
+      "classification": "simple_branch",
+      "roadBundleAssignments": [
+        {
+          "id": "road::node_25::node_7->road::node_25::node_6",
+          "fromRoadBundleId": "road::node_25::node_7",
+          "toRoadBundleId": "road::node_25::node_6",
+          "mode": "continue",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_85",
+              "toLaneId": "lane_93"
+            },
+            {
+              "fromLaneId": "lane_86",
+              "toLaneId": "lane_87"
+            }
+          ]
+        },
+        {
+          "id": "road::node_25::node_7->road::node_24::node_25",
+          "fromRoadBundleId": "road::node_25::node_7",
+          "toRoadBundleId": "road::node_24::node_25",
+          "mode": "merge",
+          "status": "confirmed",
+          "laneAssignments": [
+            {
+              "fromLaneId": "lane_85",
+              "toLaneId": "lane_88"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

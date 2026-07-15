@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>完整车道连接网络</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./lane_network.css">
+</head>
+<body>
+  <header class="toolbar">
+    <div>
+      <h1>完整车道连接网络</h1>
+      <p id="status">正在构建车道拓扑...</p>
+    </div>
+    <div class="controls">
+      <label><input id="showDirections" type="checkbox" checked> 方向</label>
+      <label><input id="showConnections" type="checkbox" checked> 节点连接</label>
+      <label><input id="showIssues" type="checkbox" checked> 问题节点</label>
+      <button id="fitButton" type="button" title="适配完整路网">适配</button>
+      <a href="./flow_matcher.html">返回匹配</a>
+    </div>
+  </header>
+  <main>
+    <canvas id="networkCanvas" aria-label="完整车道连接网络"></canvas>
+    <aside class="legend">
+      <span><i class="lane"></i>车道</span>
+      <span><i class="connection"></i>无交叉连续线</span>
+      <span><i class="reversed"></i>反向校正</span>
+      <span><i class="issue"></i>未闭合或冲突</span>
+    </aside>
+    <section id="details" class="details">
+      <strong>全局概览</strong>
+      <span id="summary"></span>
+      <span>滚轮缩放，拖动画布，点击节点查看状态</span>
+    </section>
+  </main>
+  <script type="module" src="./src/lane_network_app.js"></script>
+</body>
+</html>

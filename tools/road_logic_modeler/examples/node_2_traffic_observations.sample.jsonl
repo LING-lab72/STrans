@@ -1,0 +1,11 @@
+{"cameraId":"cam_5","trackId":"normal_lane_7","timestampMs":0,"class":"car","confidence":0.93,"worldPoint":{"x":592,"y":350}}
+{"cameraId":"cam_5","trackId":"normal_lane_7","timestampMs":1000,"class":"car","confidence":0.94,"worldPoint":{"x":592,"y":420}}
+{"cameraId":"cam_5","trackId":"normal_lane_7","timestampMs":2000,"class":"car","confidence":0.95,"worldPoint":{"x":592,"y":500}}
+{"cameraId":"cam_7","trackId":"reverse_lane_6","timestampMs":0,"class":"car","confidence":0.92,"worldPoint":{"x":564,"y":520}}
+{"cameraId":"cam_7","trackId":"reverse_lane_6","timestampMs":1000,"class":"car","confidence":0.93,"worldPoint":{"x":564,"y":450}}
+{"cameraId":"cam_7","trackId":"reverse_lane_6","timestampMs":2000,"class":"car","confidence":0.91,"worldPoint":{"x":564,"y":380}}
+{"cameraId":"cam_5","trackId":"solid_cross_lane_49","timestampMs":0,"class":"car","confidence":0.90,"worldPoint":{"x":1000,"y":532}}
+{"cameraId":"cam_5","trackId":"solid_cross_lane_49","timestampMs":1000,"class":"car","confidence":0.91,"worldPoint":{"x":930,"y":504}}
+{"cameraId":"cam_10","trackId":"stopped_lane_50","timestampMs":0,"class":"truck","confidence":0.88,"worldPoint":{"x":720,"y":560}}
+{"cameraId":"cam_10","trackId":"stopped_lane_50","timestampMs":3000,"class":"truck","confidence":0.89,"worldPoint":{"x":721,"y":560}}
+{"cameraId":"cam_10","trackId":"stopped_lane_50","timestampMs":6000,"class":"truck","confidence":0.90,"worldPoint":{"x":722,"y":560}}

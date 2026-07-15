@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>道路束与车道匹配</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./flow_matcher.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>道路束与车道匹配</h1>
+      <p id="loadStatus">正在读取道路模型...</p>
+    </div>
+    <div class="topbar-actions">
+      <a class="button-link" href="./lane_network.html">完整路网</a>
+      <button id="importButton" type="button">导入匹配</button>
+      <button id="applyButton" type="button">应用并校验</button>
+      <button id="exportButton" class="primary" type="button">导出确认 JSON</button>
+      <input id="importInput" type="file" accept="application/json" hidden>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="node-panel" aria-label="节点列表">
+      <div class="panel-heading">
+        <h2>节点</h2>
+        <span id="nodeCount" class="count"></span>
+      </div>
+      <div class="filter-tabs" role="group" aria-label="节点筛选">
+        <button type="button" data-filter="review" class="active">待匹配</button>
+        <button type="button" data-filter="chaotic">混沌路口</button>
+        <button type="button" data-filter="all">全部</button>
+      </div>
+      <canvas id="worldCanvas" width="260" height="180" aria-label="世界节点概览"></canvas>
+      <div id="nodeList" class="node-list"></div>
+    </aside>
+
+    <section class="map-panel" aria-labelledby="mapTitle">
+      <div class="panel-heading map-heading">
+        <div>
+          <h2 id="mapTitle">节点道路结构</h2>
+          <p id="nodeSubtitle"></p>
+        </div>
+        <span id="classificationBadge" class="badge"></span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="nodeCanvas" width="900" height="760" aria-label="所选节点道路束与车道连接"></canvas>
+        <div class="canvas-legend" aria-hidden="true">
+          <span><i class="legend-in"></i>入口车道</span>
+          <span><i class="legend-out"></i>出口车道</span>
+          <span><i class="legend-link"></i>已确认匹配</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="matcher-panel" aria-label="车道匹配编辑器">
+      <div class="panel-heading">
+        <h2>道路束分配</h2>
+        <span id="saveStatus" class="save-status">自动保存</span>
+      </div>
+      <div class="editor-tabs" role="tablist" aria-label="编辑模式">
+        <button id="matchingTab" type="button" role="tab" aria-selected="true">车道匹配</button>
+        <button id="directionTab" type="button" role="tab" aria-selected="false">车道方向</button>
+      </div>
+
+      <section id="solverReport" class="solver-report" aria-live="polite" hidden></section>
+
+      <div id="matchingView">
+        <label class="field-label" for="assignmentSelect">入口道路 → 出口道路</label>
+        <select id="assignmentSelect"></select>
+        <div id="assignmentMeta" class="assignment-meta"></div>
+
+        <div id="matcherStage" class="matcher-stage">
+          <svg id="matchLines" aria-hidden="true"></svg>
+          <section>
+            <h3>入口车道</h3>
+            <div id="incomingLanes" class="lane-column"></div>
+          </section>
+          <section>
+            <h3>出口车道</h3>
+            <div id="outgoingLanes" class="lane-column"></div>
+          </section>
+        </div>
+
+        <div class="match-heading">
+          <h3>已匹配</h3>
+          <div class="match-actions">
+            <button id="suggestAssignmentButton" type="button">按顺序建议</button>
+            <button id="clearAssignmentButton" type="button">清空当前</button>
+          </div>
+        </div>
+        <div id="matchList" class="match-list"></div>
+      </div>
+
+      <div id="directionView" hidden>
+        <p class="direction-note">反向只保存为校正覆盖，不修改原道路模型。修改后两端节点会同步更新。</p>
+        <div id="directionList" class="direction-list"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="./src/flow_matcher_app.js"></script>
+</body>
+</html>

@@ -1,4 +1,17 @@
-# Road Logic Modeler 本机桥接
+# Road Logic Modeler
+
+本目录保留道路建模算法、分析脚本与可复现测试；发布用静态页面位于
+`frontend/public/road_logic_modeler/`。
+
+运行工具回归测试：
+
+```powershell
+python -m pytest tools\road_logic_modeler\tests -q
+$tests = Get-ChildItem tools\road_logic_modeler\tests\*.mjs | Select-Object -ExpandProperty FullName
+node --test $tests
+```
+
+## 本机 RTSP 桥接
 
 主建模页面已经随前端发布，普通离线建模不需要运行本目录脚本。
 
