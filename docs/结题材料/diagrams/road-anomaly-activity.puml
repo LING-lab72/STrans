@@ -1,0 +1,31 @@
+@startuml
+!include theme.iuml
+title 道路异常多证据融合活动图
+skinparam shadowing false
+start
+:读取道路帧;
+:生成道路 ROI;
+:YOLO/ByteTrack 识别车辆和行人;
+if (静态图片?) then (是)
+  :亮度 + Lab 色差 + HSV 暖色掩膜;
+  :纹理、形状和车道线过滤;
+else (实时流)
+  :稀疏光流估计全局运动;
+  if (画面稳定?) then (是)
+    :背景差分 + 自适应阈值;
+    :形态学和局部轮廓过滤;
+  else (否)
+    :暂停异常输出;
+  endif
+endif
+:扣除车辆、行人和车牌代理区域;
+:多帧 IoU 一致性确认;
+:合并静态与时序候选;
+:可选路损模型补充;
+:输出异物、道路行人和路损候选事件;
+note right
+  候选进入告警处置与人工复核；
+  道路箭头误报仍是已知迭代项。
+end note
+stop
+@enduml

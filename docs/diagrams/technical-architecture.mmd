@@ -1,7 +1,7 @@
 flowchart TB
     subgraph L1["设备采集层"]
         Phone["手机 IP Webcam\nHTTP MJPEG / RTSP"]
-        ESP32["ESP32-CAM\nHTTP Stream"]
+        USB["USB 摄像头\n本地采集"]
         LocalVideo["本地沙盘视频\nMP4 文件"]
     end
 
@@ -38,7 +38,7 @@ flowchart TB
     end
 
     Phone --> VideoService
-    ESP32 --> VideoService
+    USB --> VideoService
     LocalVideo --> VideoService
     VideoService --> FastAPI
     FastAPI --> DashboardState

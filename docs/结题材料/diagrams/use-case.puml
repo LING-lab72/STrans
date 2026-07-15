@@ -1,0 +1,74 @@
+@startuml
+!include theme.iuml
+title STrans 系统用例图
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "普通用户" as User
+actor "管理员" as Admin
+actor "视频源" as Source
+actor "智能报告服务" as LLM
+Admin --|> User
+
+rectangle "STrans 智慧交通视觉感知系统" {
+  package "用户业务" {
+    usecase "登录与账号安全" as UCAuth
+    usecase "查看实时监控" as UCMonitor
+    usecase "选择摄像头" as UCCameraSelect
+    usecase "切换车辆/异常任务" as UCTask
+    usecase "查看道路热力图" as UCHeatmap
+    usecase "查询历史记录" as UCHistory
+    usecase "查看与处置告警" as UCIncident
+    usecase "导出告警证据" as UCEvidence
+    usecase "查看智能报告" as UCReportView
+  }
+
+  package "管理与配置" {
+    usecase "管理摄像头" as UCCameraAdmin
+    usecase "管理白名单" as UCWhitelist
+    usecase "配置模型参数" as UCModel
+    usecase "配置自适应调度" as UCScheduler
+    usecase "管理用户与权限" as UCUserAdmin
+    usecase "查看审计日志" as UCAudit
+    usecase "生成智能报告" as UCReportGenerate
+    usecase "道路拓扑与摄像头标定" as UCRoadModel
+  }
+
+  package "识别与数据闭环" {
+    usecase "接收视频帧" as UCFrame
+    usecase "执行视觉识别" as UCInfer
+    usecase "保存分析与事件" as UCPersist
+  }
+}
+
+UCAuth -[hidden]right-> UCCameraAdmin
+UCCameraAdmin -[hidden]right-> UCFrame
+
+User --> UCAuth
+User --> UCMonitor
+User --> UCCameraSelect
+User --> UCTask
+User --> UCHeatmap
+User --> UCHistory
+User --> UCIncident
+User --> UCEvidence
+User --> UCReportView
+
+Admin --> UCCameraAdmin
+Admin --> UCWhitelist
+Admin --> UCModel
+Admin --> UCScheduler
+Admin --> UCUserAdmin
+Admin --> UCAudit
+Admin --> UCReportGenerate
+Admin --> UCRoadModel
+
+Source --> UCFrame
+LLM --> UCReportGenerate
+UCMonitor .> UCFrame : <<include>>
+UCMonitor .> UCInfer : <<include>>
+UCInfer .> UCPersist : <<include>>
+UCIncident .> UCPersist : <<include>>
+UCReportGenerate .> UCHistory : <<include>>
+@enduml

@@ -1,0 +1,32 @@
+@startuml
+!include theme.iuml
+title 实时视频识别与道路分析时序图
+skinparam shadowing false
+actor 用户 as User
+participant "React 大屏" as Web
+participant "FastAPI" as API
+participant "CameraHub" as Hub
+participant "视觉算法" as Algo
+participant "自适应调度器" as Scheduler
+participant "RoadLogicService" as Road
+database "SQLite/证据库" as DB
+
+User -> Web : 登录、选择摄像头与任务
+Web -> API : POST /api/cameras/{id}/start
+API -> Hub : start(camera_id)
+Hub --> API : VideoStatus
+Web -> API : GET 原始/模型 MJPEG
+loop 按调度间隔
+  API -> Hub : latest_jpeg(camera_id)
+  Hub --> API : JPEG
+  API -> Scheduler : 任务模式 + 资源 + 最近时延
+  Scheduler --> API : 模型/尺寸/阈值/间隔 profile
+  API -> Algo : 按 profile 执行车辆监控或道路异常推理
+  Algo --> API : AnalysisResult + 标注帧
+  API -> Road : enrich(result)
+  Road --> API : 道路观测、禁停、拥堵
+  API -> DB : 周期保存结果、事件与证据帧
+  API --> Web : MJPEG + REST 状态
+end
+Web --> User : 指标、热力图、事件和历史
+@enduml

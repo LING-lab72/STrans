@@ -1,0 +1,12 @@
+\documentclass[UTF8,zihao=-4,openany,fontset=windows]{ctexrep}
+\newcommand{\ReportShortTitle}{系统测试报告}
+\input{preamble.tex}
+
+\begin{document}
+\STransTitlePage
+  {系统测试报告}
+  {自动化回归、真实数据、CUDA 与浏览器系统验证}
+  {V2.0 · 结题版}
+\STransDocumentFront{本文档记录测试依据、范围、环境、策略、执行统计、需求覆盖、真实数据与 GPU 验证、缺陷、准出判断和复测建议。100 个自动化测试单元通过只表示已执行用例结果，不等同于需求覆盖率、算法准确率或生产就绪度达到 100\%。}
+\input{generated/system-test-body.tex}
+\end{document}

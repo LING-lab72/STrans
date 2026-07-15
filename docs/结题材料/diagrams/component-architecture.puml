@@ -1,0 +1,69 @@
+@startuml
+!include theme.iuml
+title STrans 逻辑组件架构图
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+package "采集与接入" {
+  [RTSP/MJPEG/手机视频] as Source
+  [本地图片/录像] as FileSource
+  [CameraHub] as Hub
+  [VideoStreamService] as Stream
+}
+
+package "视觉感知" {
+  [LocalModelService\nYOLO + ByteTrack + HyperLPR3] as Local
+  [RoadAnomalyService] as Anomaly
+  [RoadMaskService\nSegFormer] as Mask
+  [可选远程算法服务] as Remote
+}
+
+package "交通与业务逻辑" {
+  [RoadLogicService] as Road
+  [WhitelistStore] as White
+  [AdaptiveModelScheduler] as Scheduler
+  [AnalysisStore] as Store
+  [AuthStore] as Auth
+  [IntelligenceReportService] as Report
+}
+
+package "离线配置工具" {
+  [道路建模工具\n节点/车道/摄像头标定] as Modeler
+  [本机 RTSP 截帧桥接] as Bridge
+}
+
+package "接口与展示" {
+  [FastAPI REST/MJPEG] as API
+  [React 监控大屏] as Web
+}
+
+database "SQLite" as DB
+folder "告警证据帧" as Evidence
+artifact "road_logic_modeler.v1" as RoadModel
+
+Source --> Hub
+FileSource --> Hub
+Hub --> Stream
+Stream --> API : 原始帧
+Hub --> Local : JPEG 帧
+Hub --> Anomaly : JPEG 帧
+Hub --> Mask : JPEG 帧
+Local --> White
+Local --> Road : AnalysisResult
+Anomaly --> Road : 异常结果
+Scheduler --> Local : 模型/尺寸/阈值/间隔
+Remote --> API : 可选结果
+Road --> Store
+Store --> DB
+Store --> Evidence
+Auth --> DB
+White --> DB
+Report --> DB
+Modeler --> RoadModel : 导出/人工审核
+RoadModel --> Road : 加载道路拓扑与标定
+Bridge --> Modeler : 可选 RTSP 单帧
+API --> Auth
+API --> Store
+API --> Report
+API --> Web : REST + MJPEG
+@enduml

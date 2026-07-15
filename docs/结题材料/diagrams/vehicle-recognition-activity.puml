@@ -1,0 +1,31 @@
+@startuml
+!include theme.iuml
+title 车辆检测、跟踪与车牌决策活动图
+skinparam shadowing false
+|输入与预处理|
+start
+:读取视频帧与摄像头配置;
+if (远景视角?) then (是)
+  :裁剪重点道路区域并提高推理分辨率;
+endif
+|检测与识别|
+:YOLO 检测 + ByteTrack 跟踪;
+:道路 ROI/面积/类别过滤，恢复视觉 ID;
+:平滑检测框并执行外观可信度过滤;
+if (车辆可信?) then (是)
+  :车辆裁剪 HyperLPR3 OCR;
+  :按轨迹进行车牌多帧稳定;
+  if (仍有未识别车辆?) then (是)
+    :周期全帧 OCR，关联或反推车辆框;
+  endif
+  |决策与输出|
+  :白名单查询、通行决策与重复框抑制;
+  :单应映射、速度估计与车辆数中值平滑;
+  :计算密度和拥堵状态;
+  :输出 AnalysisResult 和标注帧;
+else (否)
+  |决策与输出|
+  :丢弃弱误检;
+endif
+stop
+@enduml

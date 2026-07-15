@@ -1,0 +1,36 @@
+@startuml
+!include theme.iuml
+title STrans 答辩版系统用例概览
+left to right direction
+
+actor "普通用户" as User
+actor "管理员" as Admin
+actor "视频源" as Source
+actor "智能报告服务" as LLM
+Admin --|> User
+
+rectangle "STrans 智慧交通视觉感知系统" {
+  usecase "实时监控与\n视觉分析" as Monitor
+  usecase "历史记录与\n告警处置" as Incident
+  usecase "态势分析与\n智能报告" as Report
+  usecase "摄像头、模型与\n权限配置" as Config
+  usecase "道路拓扑建模与\n摄像头标定" as RoadModel
+  usecase "多源视频接入与\n识别引擎" as Engine
+}
+
+Monitor -[hidden]right-> Config
+Incident -[hidden]right-> RoadModel
+Report -[hidden]right-> Engine
+Monitor -[hidden]down-> Incident
+Config -[hidden]down-> RoadModel
+
+User --> Monitor
+User --> Incident
+User --> Report
+Admin --> Config
+Admin --> RoadModel
+Source --> Engine
+LLM --> Report
+Monitor .> Engine : <<include>>
+Incident .> Engine : <<include>>
+@enduml
