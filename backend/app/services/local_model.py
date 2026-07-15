@@ -167,6 +167,12 @@ def box_area(box: list[int]) -> int:
     return max(0, x2 - x1) * max(0, y2 - y1)
 
 
+def is_frame_entry_candidate(box: tuple[int, int, int, int] | list[int], frame_height: int) -> bool:
+    """Return whether a detection touches the tuned top or bottom entry bands."""
+    _, y1, _, y2 = box
+    return y1 <= int(frame_height * 0.18) or y2 >= int(frame_height * 0.82)
+
+
 def box_overlap_of_smaller(a: list[int], b: list[int]) -> float:
     """Return the fraction of the smaller box covered by the other box."""
     ax1, ay1, ax2, ay2 = a
@@ -1076,7 +1082,7 @@ class LocalModelService:
                 # existing track. Do not promote an untracked weak detection
                 # in the middle of the road, where lane markings are the main
                 # false-positive source.
-                is_entry_candidate = y1 <= int(height * 0.18) or y2 >= int(height * 0.82)
+                is_entry_candidate = is_frame_entry_candidate(bbox, height)
                 if (
                     fast_entry_recovery
                     and is_vehicle
