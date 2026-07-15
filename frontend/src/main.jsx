@@ -31,10 +31,18 @@ import {
 import { Bell, KeyRound, Mic, Settings2, ShieldCheck, Users } from "lucide-react";
 import "./styles.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const ROAD_MODELER_URL = "http://127.0.0.1:8765";
 const DEFAULT_PHONE_URL = "http://192.168.110.13:8080/video";
 const API_REQUEST_TIMEOUT_MS = 8000;
-const FEATURE_VIEWS = new Set(["account", "history", "incidents", "cameras", "whitelist", "models", "scheduler", "users", "audit"]);
+const FEATURE_VIEWS = new Set(["account", "analytics", "history", "incidents", "cameras", "whitelist", "models", "scheduler", "users", "audit", "roadmodeler"]);
+const TREND_METRICS = {
+  vehicle_count: { label: "车辆数量", shortLabel: "车辆", color: "#0f7aa5", tint: "#d9f2fb" },
+  detection_count: { label: "检测框数量", shortLabel: "检测框", color: "#16856b", tint: "#dcf5ea" },
+  event_count: { label: "事件数量", shortLabel: "事件", color: "#c76a16", tint: "#ffedd5" },
+};
+const TREND_LIMITS = [20, 50, 100];
+const CAMERA_CHART_COLORS = ["#0f7aa5", "#16856b", "#c76a16", "#7559a6", "#d1495b", "#64748b"];
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = API_REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -149,6 +157,261 @@ function Metric({ label, value, hint, tone = "blue" }) {
       <strong>{value}</strong>
       <small>{hint}</small>
     </div>
+  );
+}
+
+function formatTrendTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function DetectionTrendView({ records }) {
+  const [metricKey, setMetricKey] = useState("vehicle_count");
+  const [recordLimit, setRecordLimit] = useState(50);
+  const metric = TREND_METRICS[metricKey];
+  const chart = useMemo(() => {
+    const width = 1000;
+    const height = 340;
+    const padding = { top: 24, right: 26, bottom: 52, left: 58 };
+    const selected = records.slice(0, recordLimit).reverse();
+    const values = selected.map((item) => Math.max(0, Number(item[metricKey]) || 0));
+    const maxValue = Math.max(1, ...values);
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const baseline = padding.top + plotHeight;
+    const points = selected.map((item, index) => {
+      const value = values[index];
+      const x = padding.left + (selected.length > 1 ? (index / (selected.length - 1)) * plotWidth : plotWidth / 2);
+      const y = padding.top + plotHeight - (value / maxValue) * plotHeight;
+      return { item, value, x, y };
+    });
+    let total = 0;
+    let peak = 0;
+    const cameraTotals = new Map();
+    points.forEach((point) => {
+      total += point.value;
+      peak = Math.max(peak, point.value);
+      const cameraName = point.item.camera_id || "未标记摄像头";
+      cameraTotals.set(cameraName, (cameraTotals.get(cameraName) || 0) + point.value);
+    });
+    let cameraEntries = [...cameraTotals.entries()]
+      .filter(([, value]) => value > 0)
+      .sort((left, right) => right[1] - left[1]);
+    if (cameraEntries.length > 6) {
+      const otherTotal = cameraEntries.slice(5).reduce((sum, [, value]) => sum + value, 0);
+      cameraEntries = [...cameraEntries.slice(0, 5), ["其他摄像头", otherTotal]];
+    }
+    const cameraTotal = cameraEntries.reduce((sum, [, value]) => sum + value, 0);
+    let cameraOffset = 0;
+    const cameraDistribution = cameraEntries.map(([name, value], index) => {
+      const percentage = cameraTotal ? (value / cameraTotal) * 100 : 0;
+      const entry = { name, value, percentage, offset: cameraOffset, color: CAMERA_CHART_COLORS[index] };
+      cameraOffset += percentage;
+      return entry;
+    });
+    const linePath = points.map((point, index) => `${index ? "L" : "M"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+    const areaPath = points.length
+      ? `${linePath} L ${points.at(-1).x.toFixed(2)} ${baseline} L ${points[0].x.toFixed(2)} ${baseline} Z`
+      : "";
+    const labelIndexes = [...new Set([0, Math.floor((points.length - 1) / 4), Math.floor((points.length - 1) / 2), Math.floor(((points.length - 1) * 3) / 4), points.length - 1])]
+      .filter((index) => index >= 0);
+    return {
+      width,
+      height,
+      padding,
+      baseline,
+      maxValue,
+      points,
+      tableRows: points.map((point) => point.item).reverse(),
+      cameraDistribution,
+      linePath,
+      areaPath,
+      labelIndexes,
+      barWidth: Math.max(4, Math.min(18, plotWidth / Math.max(points.length, 1) * 0.48)),
+      summary: {
+        total,
+        average: points.length ? total / points.length : 0,
+        peak,
+        latest: points.at(-1)?.value || 0,
+      },
+    };
+  }, [records, recordLimit, metricKey]);
+
+  return (
+    <section className="analytics-page">
+      <Panel
+        title="检测数据趋势"
+        icon={<BarChart3 size={18} />}
+        action={
+          <div className="trend-range-switch" role="group" aria-label="趋势记录范围">
+            {TREND_LIMITS.map((limit) => (
+              <button type="button" className={cx(recordLimit === limit && "active")} onClick={() => setRecordLimit(limit)} key={limit}>
+                最近 {limit} 条
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <div className="trend-toolbar">
+          <div className="trend-metric-switch" role="group" aria-label="趋势指标">
+            {Object.entries(TREND_METRICS).map(([key, item]) => (
+              <button type="button" className={cx(metricKey === key && "active")} onClick={() => setMetricKey(key)} key={key}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <p>按检测时间排序，共加载 {chart.points.length} 条记录</p>
+        </div>
+
+        <div className="trend-summary-grid">
+          <article><span>累计{metric.shortLabel}</span><strong>{chart.summary.total.toLocaleString("zh-CN")}</strong><small>当前范围总数量</small></article>
+          <article><span>平均每次</span><strong>{chart.summary.average.toFixed(1)}</strong><small>单次检测平均值</small></article>
+          <article><span>峰值</span><strong>{chart.summary.peak.toLocaleString("zh-CN")}</strong><small>范围内最高数量</small></article>
+          <article><span>最新检测</span><strong>{chart.summary.latest.toLocaleString("zh-CN")}</strong><small>{formatTrendTime(chart.points.at(-1)?.item.created_at)}</small></article>
+        </div>
+
+        <div className="trend-chart-shell">
+          {chart.points.length ? (
+            <svg className="trend-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={`${metric.label}随检测时间变化趋势`}>
+              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                const y = chart.padding.top + (chart.baseline - chart.padding.top) * ratio;
+                const value = Math.round(chart.maxValue * (1 - ratio));
+                return (
+                  <g key={ratio}>
+                    <line x1={chart.padding.left} y1={y} x2={chart.width - chart.padding.right} y2={y} className="trend-grid-line" />
+                    <text x={chart.padding.left - 12} y={y + 4} textAnchor="end" className="trend-axis-label">{value}</text>
+                  </g>
+                );
+              })}
+              <path d={chart.areaPath} fill={metric.tint} className="trend-area" />
+              {chart.points.map((point) => (
+                <rect
+                  key={`bar-${point.item.id}`}
+                  x={point.x - chart.barWidth / 2}
+                  y={point.y}
+                  width={chart.barWidth}
+                  height={Math.max(1, chart.baseline - point.y)}
+                  fill={metric.color}
+                  className="trend-bar"
+                >
+                  <title>{`${formatTrendTime(point.item.created_at)} · ${point.item.camera_id || "未知摄像头"} · ${metric.label} ${point.value}`}</title>
+                </rect>
+              ))}
+              <path d={chart.linePath} fill="none" stroke={metric.color} className="trend-line" />
+              {chart.points.length <= 50 && chart.points.map((point) => (
+                <circle key={`point-${point.item.id}`} cx={point.x} cy={point.y} r="3.5" fill="#ffffff" stroke={metric.color} className="trend-point">
+                  <title>{`${formatTrendTime(point.item.created_at)} · ${metric.label} ${point.value}`}</title>
+                </circle>
+              ))}
+              {chart.labelIndexes.map((index) => {
+                const point = chart.points[index];
+                return <text key={`label-${point.item.id}`} x={point.x} y={chart.height - 18} textAnchor="middle" className="trend-axis-label">{formatTrendTime(point.item.created_at)}</text>;
+              })}
+            </svg>
+          ) : (
+            <div className="trend-empty"><BarChart3 size={30} /><strong>暂无检测趋势</strong><span>模型产生检测记录后，这里会自动显示数量和变化趋势。</span></div>
+          )}
+        </div>
+        <div className="trend-legend"><i style={{ background: metric.color }} /><span>{metric.label}</span><em>柱形表示单次检测数量，折线表示变化趋势</em></div>
+
+        <section className="trend-pie-section" aria-labelledby="cameraDistributionTitle">
+          <header>
+            <div>
+              <strong id="cameraDistributionTitle">摄像头检测占比</strong>
+              <span>按{metric.label}汇总</span>
+            </div>
+            <small>当前 {chart.points.length} 条检测记录</small>
+          </header>
+          {chart.cameraDistribution.length ? (
+            <div className="trend-pie-content">
+              <figure>
+                <svg className="trend-pie-chart" viewBox="0 0 180 180" role="img" aria-label={`各摄像头${metric.label}占比`}>
+                  <circle className="trend-pie-track" cx="90" cy="90" r="62" pathLength="100" />
+                  {chart.cameraDistribution.map((item) => (
+                    <circle
+                      className="trend-pie-segment"
+                      cx="90"
+                      cy="90"
+                      r="62"
+                      pathLength="100"
+                      fill="none"
+                      stroke={item.color}
+                      strokeDasharray={`${item.percentage} ${100 - item.percentage}`}
+                      strokeDashoffset={-item.offset}
+                      transform="rotate(-90 90 90)"
+                      key={item.name}
+                    >
+                      <title>{`${item.name} · ${item.value} · ${item.percentage.toFixed(1)}%`}</title>
+                    </circle>
+                  ))}
+                  <text x="90" y="85" textAnchor="middle" className="trend-pie-total">{chart.summary.total.toLocaleString("zh-CN")}</text>
+                  <text x="90" y="106" textAnchor="middle" className="trend-pie-caption">{metric.shortLabel}总量</text>
+                </svg>
+              </figure>
+              <div className="trend-pie-legend">
+                {chart.cameraDistribution.map((item) => (
+                  <div key={item.name}>
+                    <i style={{ background: item.color }} />
+                    <strong title={item.name}>{item.name}</strong>
+                    <span>{item.value.toLocaleString("zh-CN")}</span>
+                    <em>{item.percentage.toFixed(1)}%</em>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="trend-pie-empty"><BarChart3 size={26} /><span>当前范围内没有可用于占比分析的数据</span></div>
+          )}
+        </section>
+
+        <section className="trend-table-section" aria-labelledby="trendTableTitle">
+          <header>
+            <div>
+              <strong id="trendTableTitle">检测明细</strong>
+              <span>当前范围共 {chart.tableRows.length} 条记录</span>
+            </div>
+            <small>最新记录优先</small>
+          </header>
+          <div className="trend-table-wrap">
+            <table className="trend-table">
+              <thead>
+                <tr>
+                  <th>检测时间</th>
+                  <th>摄像头</th>
+                  <th className={cx(metricKey === "vehicle_count" && "active-metric")}>车辆</th>
+                  <th className={cx(metricKey === "detection_count" && "active-metric")}>检测框</th>
+                  <th className={cx(metricKey === "event_count" && "active-metric")}>事件</th>
+                  <th>拥堵状态</th>
+                  <th>推理耗时</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chart.tableRows.length ? chart.tableRows.map((item) => (
+                  <tr key={item.id}>
+                    <td>{formatTrendTime(item.created_at)}</td>
+                    <td><strong>{item.camera_id || "--"}</strong></td>
+                    <td className={cx(metricKey === "vehicle_count" && "active-metric")}>{Number(item.vehicle_count) || 0}</td>
+                    <td className={cx(metricKey === "detection_count" && "active-metric")}>{Number(item.detection_count) || 0}</td>
+                    <td className={cx(metricKey === "event_count" && "active-metric")}>{Number(item.event_count) || 0}</td>
+                    <td><span className={cx("trend-congestion", item.congestion_level || "unknown")}>{congestionText(item.congestion_level)}</span></td>
+                    <td>{item.inference_ms == null ? "--" : `${Math.round(Number(item.inference_ms) || 0)} ms`}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan="7" className="trend-table-empty">暂无检测记录</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </Panel>
+    </section>
   );
 }
 
@@ -608,7 +871,7 @@ function App() {
   const loadFeatureData = useCallback(async () => {
     if (!authToken || !currentUser || !FEATURE_VIEWS.has(viewMode)) return;
     try {
-      if (viewMode === "history") {
+      if (viewMode === "history" || viewMode === "analytics") {
         const data = await requestJson("/api/history?limit=100");
         setHistory(data.items || []);
       } else if (viewMode === "incidents") {
@@ -661,7 +924,7 @@ function App() {
       setStatuses(Object.fromEntries((statusList.items || []).map((item) => [item.camera_id, item.status])));
       setAnalysis(latest || emptyAnalysis);
       setDashboard(dash);
-      if (viewMode !== "history") setHistory(historyData.items || []);
+      if (viewMode !== "history" && viewMode !== "analytics") setHistory(historyData.items || []);
       setWhitelist(whitelistData.items || []);
       setResources(resourceData || emptyResources);
       setWeather(weatherData || emptyWeather);
@@ -1474,6 +1737,7 @@ function App() {
       {FEATURE_VIEWS.has(viewMode) && (
         <nav className="feature-center-nav" aria-label="功能中心">
           <strong><Settings2 size={17} />功能中心</strong>
+          <button type="button" className={cx(viewMode === "analytics" && "active")} onClick={() => setViewMode("analytics")}><BarChart3 size={15} />数据趋势</button>
           <button type="button" className={cx(viewMode === "history" && "active")} onClick={() => setViewMode("history")}><Database size={15} />历史记录</button>
           <button type="button" className={cx(viewMode === "incidents" && "active")} onClick={() => setViewMode("incidents")}><Bell size={15} />告警处置</button>
           <button type="button" className={cx(viewMode === "account" && "active")} onClick={() => setViewMode("account")}><KeyRound size={15} />账号安全</button>
@@ -1483,11 +1747,14 @@ function App() {
           {isAdmin && <button type="button" className={cx(viewMode === "scheduler" && "active")} onClick={() => setViewMode("scheduler")}><Activity size={15} />智能调度</button>}
           {isAdmin && <button type="button" className={cx(viewMode === "users" && "active")} onClick={() => setViewMode("users")}><Users size={15} />用户管理</button>}
           {isAdmin && <button type="button" className={cx(viewMode === "audit" && "active")} onClick={() => setViewMode("audit")}><FileText size={15} />审计日志</button>}
+          <button type="button" className={cx(viewMode === "roadmodeler" && "active")} onClick={() => setViewMode("roadmodeler")}><Route size={15} />道路建模工具</button>
         </nav>
       )}
       {FEATURE_VIEWS.has(viewMode) && featureMessage && <p className="feature-message">{featureMessage}</p>}
 
-      {viewMode === "history" ? (
+      {viewMode === "analytics" ? (
+        <DetectionTrendView records={history} />
+      ) : viewMode === "history" ? (
         <section className="history-page">
           <Panel
             title="历史记录与报告导出"
@@ -1957,6 +2224,25 @@ function App() {
                   <p className="empty-copy history-empty">没有匹配的白名单记录。可以在左侧新增车牌，数据会写入 SQLite。</p>
                 )}
               </div>
+            </div>
+          </Panel>
+        </section>
+      ) : viewMode === "roadmodeler" ? (
+        <section className="roadmodeler-page">
+          <Panel title="道路逻辑建模工具" icon={<Route size={18} />} action={
+            <div className="roadmodeler-actions">
+              <button type="button" onClick={() => window.open(ROAD_MODELER_URL, "_blank")}>
+                在新窗口打开
+              </button>
+            </div>
+          }>
+            <div className="roadmodeler-iframe-wrap">
+              <iframe
+                src={ROAD_MODELER_URL}
+                title="道路逻辑建模工具"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                loading="lazy"
+              />
             </div>
           </Panel>
         </section>

@@ -641,7 +641,11 @@ class LocalModelService:
         history = self._vehicle_count_history.setdefault(camera_id, [])
         history.append(current_count)
         del history[:-5]
-        return int(round(float(np.median(np.asarray(history, dtype=np.float32)))))
+        median_count = int(round(float(np.median(np.asarray(history, dtype=np.float32)))))
+        # New vehicles must appear on the dashboard immediately. Keep the
+        # median only on count decreases so one missed detector frame does not
+        # make a stable vehicle disappear and reappear.
+        return max(current_count, median_count)
 
     def _smooth_visual_box(
         self,
@@ -918,6 +922,7 @@ class LocalModelService:
         annotate: bool = False,
         stream_mode: bool = False,
         include_people: bool = False,
+        fast_entry_recovery: bool = False,
     ) -> tuple[AnalysisResult, bytes | None]:
         data = np.frombuffer(jpeg, np.uint8)
         frame = cv2.imdecode(data, cv2.IMREAD_COLOR)
@@ -932,6 +937,7 @@ class LocalModelService:
             annotate=annotate,
             stream_mode=stream_mode,
             include_people=include_people,
+            fast_entry_recovery=fast_entry_recovery,
         )
 
     def infer_frame(
@@ -944,6 +950,7 @@ class LocalModelService:
         annotate: bool = False,
         stream_mode: bool = False,
         include_people: bool = False,
+        fast_entry_recovery: bool = False,
     ) -> tuple[AnalysisResult, bytes | None]:
         self._frame_id += 1
         frame_counter = self._stream_frame_ids.get(camera_id, 0) + 1
@@ -960,12 +967,17 @@ class LocalModelService:
         roi_x2 = int(width * 0.55) if small_target_mode else width
         inference_frame = frame[:, roi_x1:roi_x2] if small_target_mode else frame
         inference_size = max(imgsz, 960) if small_target_mode else imgsz
+        detector_confidence = (
+            min(conf, 0.08)
+            if small_target_mode
+            else min(conf, 0.10 if fast_entry_recovery else 0.18)
+        )
         results = model.track(
             inference_frame,
             # The sandtable vehicles are often partly hidden by model trees or
             # another queued car. Keep detector recall high, then let the road,
             # appearance and temporal gates below reject weak false positives.
-            conf=min(conf, 0.08) if small_target_mode else min(conf, 0.18),
+            conf=detector_confidence,
             imgsz=inference_size,
             tracker=str(BYTETRACK_CONFIG),
             persist=True,
@@ -1041,6 +1053,21 @@ class LocalModelService:
                 )
                 x1, y1, x2, y2 = bbox
                 area = box_area(bbox)
+
+                # Low-confidence detections are useful for a moving vehicle
+                # entering at the frame boundary and for associating an
+                # existing track. Do not promote an untracked weak detection
+                # in the middle of the road, where lane markings are the main
+                # false-positive source.
+                is_entry_candidate = y1 <= int(height * 0.18) or y2 >= int(height * 0.82)
+                if (
+                    fast_entry_recovery
+                    and is_vehicle
+                    and float(det_conf) < 0.18
+                    and stable_track_id is None
+                    and not is_entry_candidate
+                ):
+                    continue
 
                 if is_person:
                     detections.append(
@@ -1437,6 +1464,7 @@ class LocalModelService:
                 imgsz=int(policy.get("inference_size", imgsz)),
                 annotate=True,
                 stream_mode=True,
+                fast_entry_recovery=True,
             )
             if should_continue is not None and not should_continue():
                 break

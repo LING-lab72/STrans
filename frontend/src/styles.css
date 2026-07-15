@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: light;
   font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
   color: #102338;
@@ -1656,6 +1656,7 @@ select:focus {
   white-space: nowrap;
 }
 
+.analytics-page,
 .history-page,
 .whitelist-page,
 .model-page,
@@ -1663,6 +1664,53 @@ select:focus {
 .feature-page {
   max-width: 1880px;
   margin: 10px auto 0;
+}
+.roadmodeler-page {
+  max-width: 1880px;
+  margin: 10px auto 0;
+}
+
+.roadmodeler-page .panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.roadmodeler-iframe-wrap {
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.roadmodeler-iframe-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.roadmodeler-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.roadmodeler-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 12px;
+  color: #fff;
+  background: #0a7cc4;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roadmodeler-actions button:hover {
+  background: #0866a3;
 }
 
 .feature-center-nav {
@@ -1718,6 +1766,452 @@ select:focus {
   border: 1px solid #bae6fd;
   border-radius: 8px;
   font-size: 12px;
+}
+
+.analytics-page .panel {
+  overflow: hidden;
+}
+
+.trend-range-switch,
+.trend-metric-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: #eef4f8;
+  border: 1px solid #d3e1ed;
+  border-radius: 7px;
+}
+
+.trend-range-switch button,
+.trend-metric-switch button {
+  min-height: 30px;
+  padding: 0 10px;
+  color: #52687f;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trend-range-switch button:hover,
+.trend-range-switch button.active,
+.trend-metric-switch button:hover,
+.trend-metric-switch button.active {
+  color: #0f2d45;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(29, 53, 75, 0.14);
+}
+
+.trend-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px 8px;
+}
+
+.trend-toolbar p {
+  margin: 0;
+  color: #6b8195;
+  font-size: 12px;
+}
+
+.trend-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 6px 16px 12px;
+}
+
+.trend-summary-grid article {
+  min-width: 0;
+  padding: 12px 14px;
+  background: #f8fbfd;
+  border: 1px solid #d7e3ec;
+  border-top: 3px solid #0f7aa5;
+  border-radius: 7px;
+}
+
+.trend-summary-grid article:nth-child(2) { border-top-color: #16856b; }
+.trend-summary-grid article:nth-child(3) { border-top-color: #c76a16; }
+.trend-summary-grid article:nth-child(4) { border-top-color: #64748b; }
+
+.trend-summary-grid span,
+.trend-summary-grid small,
+.trend-summary-grid strong {
+  display: block;
+}
+
+.trend-summary-grid span {
+  color: #52687f;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.trend-summary-grid strong {
+  margin: 5px 0 2px;
+  overflow: hidden;
+  color: #0f2d45;
+  font-size: 24px;
+  text-overflow: ellipsis;
+}
+
+.trend-summary-grid small {
+  overflow: hidden;
+  color: #7890a4;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-chart-shell {
+  min-height: 360px;
+  margin: 0 16px;
+  overflow-x: auto;
+  background: #fbfdff;
+  border: 1px solid #d7e3ec;
+  border-radius: 7px;
+}
+
+.trend-chart {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: 360px;
+}
+
+.trend-grid-line {
+  stroke: #dfe8ef;
+  stroke-width: 1;
+}
+
+.trend-axis-label {
+  fill: #7890a4;
+  font-size: 10px;
+}
+
+.trend-area {
+  opacity: 0.52;
+}
+
+.trend-bar {
+  opacity: 0.24;
+  transition: opacity 160ms ease;
+}
+
+.trend-bar:hover {
+  opacity: 0.62;
+}
+
+.trend-line {
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-point {
+  stroke-width: 2;
+}
+
+.trend-empty {
+  display: grid;
+  min-height: 358px;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  color: #7890a4;
+  text-align: center;
+}
+
+.trend-empty strong {
+  color: #35536d;
+}
+
+.trend-legend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px 15px;
+  color: #52687f;
+  font-size: 11px;
+}
+
+.trend-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.trend-legend span {
+  color: #0f2d45;
+  font-weight: 800;
+}
+
+.trend-legend em {
+  margin-left: auto;
+  color: #7890a4;
+  font-style: normal;
+}
+
+.trend-pie-section {
+  margin: 0 16px 16px;
+  overflow: hidden;
+  border: 1px solid #d7e3ec;
+  border-radius: 7px;
+}
+
+.trend-pie-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: #f3f8fc;
+  border-bottom: 1px solid #d7e3ec;
+}
+
+.trend-pie-section > header div {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.trend-pie-section > header strong {
+  color: #0f2d45;
+  font-size: 13px;
+}
+
+.trend-pie-section > header span,
+.trend-pie-section > header small {
+  color: #6b8195;
+  font-size: 11px;
+}
+
+.trend-pie-content {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(360px, 1.28fr);
+  min-height: 260px;
+}
+
+.trend-pie-content figure {
+  display: grid;
+  margin: 0;
+  padding: 16px;
+  place-items: center;
+  border-right: 1px solid #e3ebf1;
+}
+
+.trend-pie-chart {
+  width: min(220px, 100%);
+  aspect-ratio: 1;
+}
+
+.trend-pie-track,
+.trend-pie-segment {
+  fill: none;
+  stroke-width: 25;
+}
+
+.trend-pie-track {
+  stroke: #edf2f6;
+}
+
+.trend-pie-segment {
+  transition: opacity 160ms ease;
+}
+
+.trend-pie-segment:hover {
+  opacity: 0.72;
+}
+
+.trend-pie-total {
+  fill: #0f2d45;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.trend-pie-caption {
+  fill: #7890a4;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.trend-pie-legend {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 18px;
+}
+
+.trend-pie-legend > div {
+  display: grid;
+  grid-template-columns: 10px minmax(100px, 1fr) 80px 62px;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border-bottom: 1px solid #edf2f6;
+  color: #52687f;
+  font-size: 12px;
+}
+
+.trend-pie-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.trend-pie-legend strong {
+  overflow: hidden;
+  color: #12304a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-pie-legend span,
+.trend-pie-legend em {
+  text-align: right;
+}
+
+.trend-pie-legend em {
+  color: #0f7aa5;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.trend-pie-empty {
+  display: grid;
+  min-height: 180px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #7890a4;
+  font-size: 12px;
+}
+
+.trend-table-section {
+  margin: 0 16px 16px;
+  overflow: hidden;
+  border: 1px solid #d7e3ec;
+  border-radius: 7px;
+}
+
+.trend-table-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: #f3f8fc;
+  border-bottom: 1px solid #d7e3ec;
+}
+
+.trend-table-section > header div {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.trend-table-section > header strong {
+  color: #0f2d45;
+  font-size: 13px;
+}
+
+.trend-table-section > header span,
+.trend-table-section > header small {
+  color: #6b8195;
+  font-size: 11px;
+}
+
+.trend-table-wrap {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.trend-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #415970;
+  font-size: 12px;
+}
+
+.trend-table th,
+.trend-table td {
+  height: 42px;
+  padding: 8px 10px;
+  overflow: hidden;
+  border-bottom: 1px solid #e3ebf1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  color: #52687f;
+  background: #fbfdff;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.trend-table th:first-child,
+.trend-table td:first-child {
+  width: 150px;
+  text-align: left;
+}
+
+.trend-table th:nth-child(2),
+.trend-table td:nth-child(2) {
+  width: 120px;
+  text-align: left;
+}
+
+.trend-table tbody tr:nth-child(even) {
+  background: #f9fcfe;
+}
+
+.trend-table tbody tr:hover {
+  background: #f0f8fc;
+}
+
+.trend-table td strong {
+  color: #12304a;
+}
+
+.trend-table .active-metric {
+  color: #075985;
+  background: #eaf7fd;
+  font-weight: 900;
+}
+
+.trend-congestion {
+  display: inline-flex;
+  min-width: 48px;
+  justify-content: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #475569;
+  background: #e2e8f0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.trend-congestion.low { color: #166534; background: #dcfce7; }
+.trend-congestion.medium { color: #9a3412; background: #ffedd5; }
+.trend-congestion.high { color: #b91c1c; background: #fee2e2; }
+
+.trend-table-empty {
+  height: 100px !important;
+  color: #7890a4;
+  text-align: center !important;
 }
 
 .report-page-layout {
@@ -2527,6 +3021,7 @@ select:focus {
 }
 
 @media (max-width: 1080px) {
+  .trend-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scheduler-layout { grid-template-columns: 1fr; }
   .scheduler-profile-grid { grid-template-columns: 1fr; }
   .topbar,
@@ -2610,6 +3105,24 @@ select:focus {
 }
 
 @media (max-width: 700px) {
+  .trend-toolbar { align-items: stretch; flex-direction: column; }
+  .trend-metric-switch { width: 100%; overflow-x: auto; }
+  .trend-metric-switch button { flex: 1 0 auto; }
+  .trend-summary-grid { grid-template-columns: 1fr 1fr; }
+  .trend-chart-shell { margin: 0 10px; }
+  .trend-pie-section { margin: 0 10px 10px; }
+  .trend-pie-section > header { align-items: flex-start; }
+  .trend-pie-section > header div { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .trend-pie-content { grid-template-columns: 1fr; }
+  .trend-pie-content figure { border-right: 0; border-bottom: 1px solid #e3ebf1; }
+  .trend-pie-legend { padding: 10px; }
+  .trend-pie-legend > div { grid-template-columns: 10px minmax(90px, 1fr) 58px 50px; gap: 7px; }
+  .trend-table-section { margin: 0 10px 10px; }
+  .trend-table-section > header { align-items: flex-start; }
+  .trend-table-section > header div { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .trend-range-switch { max-width: 58vw; overflow-x: auto; }
+  .trend-legend { align-items: flex-start; flex-wrap: wrap; }
+  .trend-legend em { width: 100%; margin-left: 17px; }
   .app-shell {
     padding: 10px;
   }
