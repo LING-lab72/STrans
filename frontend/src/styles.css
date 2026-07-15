@@ -23,6 +23,7 @@ body {
 }
 
 .auth-page {
+  position: relative;
   display: grid;
   min-height: calc(100vh - 28px);
   place-items: center;
@@ -108,6 +109,33 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.theme-toggle {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  color: #294761;
+  background: #ffffff;
+  border: 1px solid #cdd9e5;
+  border-radius: 8px;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.theme-toggle:hover {
+  color: #075985;
+  background: #f0f9ff;
+  border-color: #9bd8ef;
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
 }
 
 h1,
@@ -1118,6 +1146,40 @@ select:focus {
   cursor: zoom-in;
 }
 
+.heatmap-view-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px 0;
+}
+
+.heatmap-mode-switch {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #bdd2e4;
+  border-radius: 6px;
+}
+
+.heatmap-mode-switch button {
+  min-height: 28px;
+  padding: 0 9px;
+  color: #416078;
+  background: #f9fcff;
+  border: 0;
+  border-right: 1px solid #bdd2e4;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.heatmap-mode-switch button:last-child {
+  border-right: 0;
+}
+
+.heatmap-mode-switch button.active {
+  color: #ffffff;
+  background: #087aa8;
+}
+
 .heatmap-road {
   position: absolute;
   background: rgba(72, 90, 110, 0.16);
@@ -1236,6 +1298,27 @@ select:focus {
   stroke-width: 4px;
 }
 
+.map-live-vehicle {
+  transition: transform 420ms linear;
+}
+
+.map-live-vehicle-halo {
+  fill: rgb(220 38 38 / 24%);
+  animation: live-vehicle-pulse 1.4s ease-in-out infinite;
+}
+
+.map-live-vehicle-dot {
+  fill: #dc2626;
+  stroke: #ffffff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes live-vehicle-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.2; }
+}
+
 .map-road-flow {
   fill: none;
   stroke-linecap: round;
@@ -1345,6 +1428,14 @@ select:focus {
 
 .map-legend .camera {
   background: #1686a8;
+  border-radius: 50%;
+}
+
+.map-legend .vehicle {
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border: 1px solid #ffffff;
   border-radius: 50%;
 }
 
@@ -2955,6 +3046,20 @@ select:focus {
   border-radius: 8px;
 }
 
+.heatmap-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heatmap-modal header .save-heatmap-button {
+  display: inline-flex;
+  width: auto;
+  padding: 0 11px;
+  gap: 6px;
+  font-weight: 750;
+}
+
 .heatmap-modal .heatmap {
   height: min(62vh, 620px);
   margin: 0;
@@ -2995,6 +3100,485 @@ select:focus {
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.multiheatmap-actions,
+.multiheatmap-selection-actions,
+.multiheatmap-toolbar {
+  display: flex;
+  align-items: center;
+}
+
+.multiheatmap-actions {
+  gap: 8px;
+}
+
+.multiheatmap-actions button,
+.multiheatmap-selection-actions button {
+  display: inline-flex;
+  min-height: 32px;
+  padding: 0 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #31506a;
+  background: #ffffff;
+  border: 1px solid #c9d9e6;
+  border-radius: 6px;
+  font-weight: 750;
+}
+
+.multiheatmap-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  min-height: 660px;
+}
+
+.multiheatmap-selector {
+  padding: 14px;
+  background: #f7fafc;
+  border-right: 1px solid #d5e1eb;
+}
+
+.multiheatmap-selector > header,
+.multiheatmap-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.multiheatmap-selector > header span,
+.multiheatmap-toolbar > span {
+  color: #587086;
+  font-size: 12px;
+}
+
+.multiheatmap-selection-actions {
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.multiheatmap-selection-actions button {
+  flex: 1;
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.multiheatmap-camera-list {
+  display: grid;
+  gap: 6px;
+  max-height: 560px;
+  overflow: auto;
+}
+
+.multiheatmap-camera-list label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 10px;
+  min-height: 52px;
+  padding: 7px 9px;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #d7e2eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.multiheatmap-camera-list label.selected {
+  background: #edf9fe;
+  border-color: #6dc5e5;
+}
+
+.multiheatmap-camera-list label span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.multiheatmap-camera-list label strong,
+.multiheatmap-camera-list label small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiheatmap-camera-list label small {
+  color: #6a7f91;
+}
+
+.multiheatmap-camera-list label i {
+  width: 8px;
+  height: 8px;
+  background: #94a3b8;
+  border-radius: 50%;
+}
+
+.multiheatmap-camera-list label i.running {
+  background: #22a866;
+  box-shadow: 0 0 0 3px rgb(34 168 102 / 15%);
+}
+
+.multiheatmap-content {
+  min-width: 0;
+  padding: 14px;
+}
+
+.multiheatmap-toolbar {
+  margin-bottom: 10px;
+}
+
+.multiheatmap-content > .heatmap {
+  height: clamp(420px, 58vh, 620px);
+  margin: 0;
+}
+
+.multiheatmap-streams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.multiheatmap-streams article {
+  position: relative;
+  min-height: 92px;
+  overflow: hidden;
+  background: #0b1620;
+  border: 1px solid #263c4e;
+  border-radius: 6px;
+}
+
+.multiheatmap-streams img,
+.multiheatmap-stream-offline {
+  display: block;
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+}
+
+.multiheatmap-stream-offline {
+  display: grid;
+  place-items: center;
+  color: #8da2b2;
+}
+
+.multiheatmap-streams article span {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 5px 7px;
+  overflow: hidden;
+  color: #ffffff;
+  background: rgb(4 12 20 / 72%);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  color: #dbe7f0;
+  background: #0b1118;
+}
+
+html[data-theme="dark"] body {
+  background:
+    linear-gradient(90deg, rgba(113, 170, 207, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(113, 170, 207, 0.06) 1px, transparent 1px),
+    #0b1118;
+  background-size: 32px 32px;
+}
+
+html[data-theme="dark"] :where(.auth-card, .topbar, .metric, .panel, .log-strip, .resource-monitor, .feature-center-nav, .heatmap-modal) {
+  color: #dbe7f0;
+  background: rgba(17, 28, 39, 0.98);
+  border-color: #2d4052;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] :where(h1, h2, h3, h4, strong, label, .panel-header, .resource-monitor > header span) {
+  color: #e8f2f8;
+}
+
+html[data-theme="dark"] :where(.brand p, .hint, .empty-copy, .resource-copy small, .resource-monitor > header small, .trend-toolbar p, .trend-legend, .trend-pie-section > header span, .trend-pie-section > header small, .trend-table-section > header span, .trend-table-section > header small) {
+  color: #9fb2c2;
+}
+
+html[data-theme="dark"] :where(input, select, textarea) {
+  color: #e6f1f8;
+  background: #0d1721;
+  border-color: #34495d;
+}
+
+html[data-theme="dark"] :where(input, textarea)::placeholder {
+  color: #71879a;
+}
+
+html[data-theme="dark"] :where(.nav-switch, .text-action, .theme-toggle, .auth-tabs button, .download-link, .selected-camera-actions button, .main-actions button, .camera-actions button, .whitelist-plate button, .whitelist-row button, .form-actions button, .managed-camera-row button, .incident-actions button, .password-reset button, .heatmap-modal header button) {
+  color: #cfe0eb;
+  background: #172533;
+  border-color: #34495d;
+}
+
+html[data-theme="dark"] :where(.nav-switch, .auth-tabs button, .feature-center-nav button, .trend-range-switch button, .trend-metric-switch button).active {
+  color: #ffffff;
+  background: #0d6f9e;
+  border-color: #218dbd;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+  color: #8ddcff;
+  background: #203446;
+  border-color: #39708d;
+}
+
+html[data-theme="dark"] .brand > span {
+  color: #7dd3fc;
+  background: #123148;
+  border-color: #285d7a;
+}
+
+html[data-theme="dark"] .service-pill {
+  color: #b8cad8;
+  background: #172533;
+  border-color: #34495d;
+}
+
+html[data-theme="dark"] .service-pill.ok {
+  color: #91e6b0;
+  background: #123024;
+  border-color: #2e6a49;
+}
+
+html[data-theme="dark"] .service-pill.warn {
+  color: #ffd08a;
+  background: #352713;
+  border-color: #72542a;
+}
+
+html[data-theme="dark"] :where(.resource-grid, .camera-card, .selected-camera-summary, .voice-command-guide, .preview-tile, .form-block, .history-list article, .trend-summary-grid article, .trend-chart-shell, .trend-pie-section, .trend-table-section, .report-side, .report-config, .report-list, .report-content, .history-table, .whitelist-form, .whitelist-table, .model-form, .model-status-list, .camera-management-form, .scheduler-overview, .scheduler-active, .scheduler-history) {
+  color: #c9d8e3;
+  background: #14202c;
+  border-color: #2d4052;
+}
+
+html[data-theme="dark"] :where(.panel-header, .preview-head, .preview-tile footer, .trend-pie-section > header, .trend-table-section > header, .history-table-head, .whitelist-table-head, .managed-camera-head, .incident-table-head, .user-table-head, .audit-table-head, .scheduler-history-head) {
+  color: #d7e5ee;
+  background: #1a2a38;
+  border-color: #304456;
+}
+
+html[data-theme="dark"] :where(.feature-center-nav button, .feature-center-nav strong) {
+  color: #b7c9d7;
+}
+
+html[data-theme="dark"] .feature-center-nav strong {
+  border-right-color: #304456;
+}
+
+html[data-theme="dark"] :where(.feature-center-nav button:hover, .trend-range-switch button:hover, .trend-metric-switch button:hover) {
+  color: #dff4ff;
+  background: #203446;
+  border-color: #39708d;
+}
+
+html[data-theme="dark"] :where(.trend-range-switch, .trend-metric-switch) {
+  background: #0e1822;
+  border-color: #304456;
+}
+
+html[data-theme="dark"] .trend-summary-grid article {
+  background: #152330;
+  border-color: #304456;
+}
+
+html[data-theme="dark"] :where(.trend-summary-grid strong, .trend-empty strong, .trend-legend span, .trend-pie-section > header strong, .trend-table-section > header strong, .trend-pie-legend strong, .trend-table td strong) {
+  color: #e8f2f8;
+}
+
+html[data-theme="dark"] :where(.trend-summary-grid span, .trend-summary-grid small, .trend-pie-caption, .trend-axis-label, .trend-pie-empty, .trend-table-empty) {
+  color: #91a7b8;
+  fill: #91a7b8;
+}
+
+html[data-theme="dark"] .trend-chart-shell {
+  background: #0f1923;
+}
+
+html[data-theme="dark"] .trend-grid-line {
+  stroke: #2b3e4e;
+}
+
+html[data-theme="dark"] .trend-area {
+  opacity: 0.16;
+}
+
+html[data-theme="dark"] .trend-bar {
+  opacity: 0.45;
+}
+
+html[data-theme="dark"] .trend-pie-content figure,
+html[data-theme="dark"] .trend-pie-legend > div {
+  border-color: #2d4052;
+}
+
+html[data-theme="dark"] .trend-pie-track {
+  stroke: #263746;
+}
+
+html[data-theme="dark"] .trend-pie-total {
+  fill: #e8f2f8;
+}
+
+html[data-theme="dark"] .panel :is(h2, h3, h4, strong, label) {
+  color: #e8f2f8;
+}
+
+html[data-theme="dark"] .panel :is(p, small, time) {
+  color: #9fb2c2;
+}
+
+html[data-theme="dark"] .trend-pie-section > header strong,
+html[data-theme="dark"] .trend-table-section > header strong,
+html[data-theme="dark"] .trend-pie-legend strong,
+html[data-theme="dark"] .trend-table td strong,
+html[data-theme="dark"] .history-row strong,
+html[data-theme="dark"] .whitelist-row strong,
+html[data-theme="dark"] .managed-camera-row strong,
+html[data-theme="dark"] .model-status-list strong {
+  color: #e8f2f8;
+}
+
+html[data-theme="dark"] .trend-pie-section > header span,
+html[data-theme="dark"] .trend-pie-section > header small,
+html[data-theme="dark"] .trend-table-section > header span,
+html[data-theme="dark"] .trend-table-section > header small {
+  color: #9fb2c2;
+}
+
+html[data-theme="dark"] .trend-table {
+  color: #b9cad7;
+}
+
+html[data-theme="dark"] .trend-table th {
+  color: #a9bdcc;
+  background: #172532;
+}
+
+html[data-theme="dark"] .trend-table th,
+html[data-theme="dark"] .trend-table td {
+  border-bottom-color: #293b4b;
+}
+
+html[data-theme="dark"] .trend-table tbody tr:nth-child(even) {
+  background: #111d28;
+}
+
+html[data-theme="dark"] .trend-table tbody tr:hover {
+  background: #1b2d3b;
+}
+
+html[data-theme="dark"] .trend-table .active-metric {
+  color: #8ddcff;
+  background: #15384a;
+}
+
+html[data-theme="dark"] :where(.history-row, .whitelist-row, .managed-camera-row, .incident-row, .user-row, .audit-row, .scheduler-history-row) {
+  color: #b9cad7;
+  border-color: #293b4b;
+}
+
+html[data-theme="dark"] :where(.history-row:nth-child(odd), .whitelist-row:nth-child(odd), .managed-camera-row:nth-child(odd), .incident-row:nth-child(odd), .user-row:nth-child(odd), .audit-row:nth-child(odd)) {
+  background: #111d28;
+}
+
+html[data-theme="dark"] :where(.report-page-layout, .report-side, .report-content, .scheduler-layout) {
+  background: #101a24;
+  border-color: #2d4052;
+}
+
+html[data-theme="dark"] :where(.report-list-item, .scheduler-profile-grid span, .scheduler-active article, .log-strip span) {
+  color: #bed0dc;
+  background: #172532;
+  border-color: #304456;
+}
+
+html[data-theme="dark"] .report-list-item.active {
+  color: #dff4ff;
+  background: #15384a;
+  border-color: #39708d;
+}
+
+html[data-theme="dark"] :where(.heatmap, .modeled-heatmap svg, .preview-screen, .video-stage) {
+  background: #081018;
+  border-color: #2d4052;
+}
+
+html[data-theme="dark"] .map-ground {
+  fill: #101b24;
+}
+
+html[data-theme="dark"] .map-grid-line {
+  stroke: #223746;
+}
+
+html[data-theme="dark"] .map-building {
+  fill: #263746;
+  stroke: #3b5264;
+}
+
+html[data-theme="dark"] .heatmap-mode-switch {
+  border-color: #3b5264;
+}
+
+html[data-theme="dark"] .heatmap-mode-switch button {
+  color: #bed0dc;
+  background: #172532;
+  border-color: #3b5264;
+}
+
+html[data-theme="dark"] .heatmap-mode-switch button.active {
+  color: #ffffff;
+  background: #087aa8;
+}
+
+html[data-theme="dark"] .multiheatmap-selector {
+  background: #111d28;
+  border-color: #2d4052;
+}
+
+html[data-theme="dark"] .multiheatmap-camera-list label,
+html[data-theme="dark"] :where(.multiheatmap-actions button, .multiheatmap-selection-actions button) {
+  color: #cfe0eb;
+  background: #172532;
+  border-color: #34495d;
+}
+
+html[data-theme="dark"] .multiheatmap-camera-list label.selected {
+  background: #15384a;
+  border-color: #39708d;
+}
+
+html[data-theme="dark"] .feature-message {
+  color: #9edfff;
+  background: #112d3e;
+  border-color: #285d7a;
+}
+
+html[data-theme="dark"] .modal-backdrop {
+  background: rgba(2, 8, 14, 0.76);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle,
+  .map-live-vehicle {
+    transition: none;
+  }
+
+  .map-live-vehicle-halo {
+    animation: none;
+  }
 }
 
 @media (max-width: 1300px) {
@@ -3149,5 +3733,21 @@ select:focus {
 
   .video-stage {
     min-height: 42vh;
+  }
+}
+
+@media (max-width: 900px) {
+  .multiheatmap-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .multiheatmap-selector {
+    border-right: 0;
+    border-bottom: 1px solid #d5e1eb;
+  }
+
+  .multiheatmap-camera-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 220px;
   }
 }

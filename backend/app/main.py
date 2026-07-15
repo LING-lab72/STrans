@@ -56,7 +56,7 @@ analysis_store = AnalysisStore()
 local_model = LocalModelService()
 last_stream_history_save: dict[str, float] = {}
 model_stream_lock = threading.Lock()
-model_stream_generation = 0
+model_stream_generations: dict[str, int] = {}
 
 app.add_middleware(
     CORSMiddleware,
@@ -388,16 +388,15 @@ def camera_model_mjpeg(
     model_name: str = Query(default="auto", pattern="^(auto|visdrone|fallback)$"),
     task_mode: str = Query(default="traffic", pattern="^(traffic|road_anomaly)$"),
 ) -> StreamingResponse:
-    global model_stream_generation
     _ensure_camera(camera_id)
     config = algorithm_client.detection_config
     with model_stream_lock:
-        model_stream_generation += 1
-        stream_generation = model_stream_generation
+        stream_generation = model_stream_generations.get(camera_id, 0) + 1
+        model_stream_generations[camera_id] = stream_generation
 
     def is_current_stream() -> bool:
         with model_stream_lock:
-            return stream_generation == model_stream_generation
+            return stream_generation == model_stream_generations.get(camera_id)
 
     def handle_traffic_result(result: AnalysisResult, source_jpeg: bytes) -> None:
         if not is_current_stream():

@@ -345,11 +345,25 @@ class RoadLogicService:
 
         lane_stats = build_region_stats(lane_groups)
         junction_stats = build_region_stats(junction_groups)
+        vehicles = [
+            {
+                "camera_id": track["camera_id"],
+                "track_id": track["track_id"],
+                "x": track["x"],
+                "y": track["y"],
+                "lane_id": track.get("lane_id"),
+                "junction_id": track.get("junction_id"),
+                "speed_cm_s": track.get("speed_cm_s"),
+                "age_ms": round(max(0.0, now - float(track["last_seen"])) * 1000),
+            }
+            for track in active_tracks
+        ]
         return {
             "camera_id": camera_id,
             "world": self._road.get("world", {"width": 1200, "height": 760, "unit": "cm"}),
             "points": points,
             "point_count": len(points),
+            "vehicles": vehicles,
             "active_track_count": len(active_tracks),
             "lane_stats": lane_stats,
             "junction_stats": junction_stats,

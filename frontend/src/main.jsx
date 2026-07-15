@@ -15,6 +15,7 @@ import {
   FileText,
   Flame,
   MemoryStick,
+  Moon,
   PackageCheck,
   Play,
   Radio,
@@ -23,6 +24,7 @@ import {
   ServerCog,
   Sparkles,
   Square,
+  Sun,
   Trash2,
   X,
   Wifi,
@@ -35,7 +37,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 const ROAD_MODELER_URL = "http://127.0.0.1:8765";
 const DEFAULT_PHONE_URL = "http://192.168.110.13:8080/video";
 const API_REQUEST_TIMEOUT_MS = 8000;
-const FEATURE_VIEWS = new Set(["account", "analytics", "history", "incidents", "cameras", "whitelist", "models", "scheduler", "users", "audit", "roadmodeler"]);
+const FEATURE_VIEWS = new Set(["account", "analytics", "multiheatmap", "history", "incidents", "cameras", "whitelist", "models", "scheduler", "users", "audit", "roadmodeler"]);
 const TREND_METRICS = {
   vehicle_count: { label: "车辆数量", shortLabel: "车辆", color: "#0f7aa5", tint: "#d9f2fb" },
   detection_count: { label: "检测框数量", shortLabel: "检测框", color: "#16856b", tint: "#dcf5ea" },
@@ -157,6 +159,51 @@ function Metric({ label, value, hint, tone = "blue" }) {
       <strong>{value}</strong>
       <small>{hint}</small>
     </div>
+  );
+}
+
+function heatmapForCameras(snapshot, cameraIds) {
+  const selected = new Set(cameraIds || []);
+  const vehicles = (snapshot?.vehicles || []).filter((vehicle) => selected.has(vehicle.camera_id));
+  const buildStats = (key) => {
+    const groups = new Map();
+    vehicles.forEach((vehicle) => {
+      const id = vehicle[key];
+      if (!id) return;
+      const group = groups.get(id) || { count: 0, speeds: [] };
+      group.count += 1;
+      if (Number.isFinite(Number(vehicle.speed_cm_s)) && Number(vehicle.speed_cm_s) >= 0) group.speeds.push(Number(vehicle.speed_cm_s));
+      groups.set(id, group);
+    });
+    return Object.fromEntries(Array.from(groups, ([id, group]) => {
+      const avgSpeed = group.speeds.length ? group.speeds.reduce((sum, value) => sum + value, 0) / group.speeds.length : null;
+      const score = Math.min(1, group.count / 4) * 0.85 + (avgSpeed == null ? 0 : Math.max(0, 1 - Math.min(avgSpeed / 18, 1))) * 0.15;
+      const level = score < 0.20 ? "free" : score < 0.42 ? "smooth" : score < 0.62 ? "slow" : score < 0.82 ? "congested" : "severe";
+      return [id, { track_count: group.count, avg_speed_cm_s: avgSpeed == null ? null : Number(avgSpeed.toFixed(2)), score: Number(score.toFixed(3)), level }];
+    }));
+  };
+  return {
+    ...(snapshot || {}),
+    vehicles,
+    points: (snapshot?.points || []).filter((point) => selected.has(point.camera_id)),
+    active_track_count: vehicles.length,
+    lane_stats: buildStats("lane_id"),
+    junction_stats: buildStats("junction_id"),
+  };
+}
+
+function ThemeToggle({ theme, onToggle, className }) {
+  const nextThemeLabel = theme === "dark" ? "浅色" : "深色";
+  return (
+    <button
+      type="button"
+      className={cx("theme-toggle", className)}
+      onClick={onToggle}
+      aria-label={`切换到${nextThemeLabel}模式`}
+      title={`切换到${nextThemeLabel}模式`}
+    >
+      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
   );
 }
 
@@ -549,7 +596,7 @@ function CameraCard({ camera, status, selected, onSelect, onStart, onStop }) {
   );
 }
 
-function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = false }) {
+function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = false, displayMode = "heat" }) {
   const world = roadModel?.world || roadHeatmap?.world || { width: 1200, height: 760 };
   const lanes = roadModel?.lanes || [];
   const nodes = roadModel?.nodes || [];
@@ -586,6 +633,10 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
   const polygonIntersectsViewport = (polygon = []) => pathIntersectsViewport(polygon);
   const laneStats = roadHeatmap?.lane_stats || {};
   const junctionStats = roadHeatmap?.junction_stats || {};
+  const vehicles = (roadHeatmap?.vehicles || []).filter((vehicle) => (
+    intersectsViewport(Number(vehicle.x), Number(vehicle.y))
+  ));
+  const showVehicles = displayMode === "vehicles";
   const visibleBuildings = globalView
     ? buildings
     : buildings.filter((building) => intersectsViewport(building.x, building.y, building.width, building.height));
@@ -643,7 +694,7 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
               strokeWidth={(lane.width || 28) + 6}
               className="map-road-surface"
             />
-            {laneStats[lane.id] && (
+            {!showVehicles && laneStats[lane.id] && (
               <polyline
                 points={(lane.path || []).map((point) => `${point.x},${point.y}`).join(" ")}
                 strokeWidth={(lane.width || 28) + 1}
@@ -656,7 +707,7 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
           <polygon
             key={zone.id}
             points={(zone.polygon || []).map((point) => `${point.x},${point.y}`).join(" ")}
-            className={cx("map-junction-zone", junctionStats[zone.id]?.level)}
+            className={cx("map-junction-zone", !showVehicles && junctionStats[zone.id]?.level)}
           />
         ))}
         {visibleLanes.map((lane) => (
@@ -671,6 +722,17 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
         {visibleNodes.filter((node) => node.type === "junction").map((node) => (
           <circle key={node.id} cx={node.x} cy={node.y} r={globalView ? 8 : 5} className="map-node" />
         ))}
+        {showVehicles && vehicles.map((vehicle) => (
+          <g
+            key={`${vehicle.camera_id}:${vehicle.track_id}`}
+            className="map-live-vehicle"
+            transform={`translate(${vehicle.x} ${vehicle.y})`}
+          >
+            <circle r={globalView ? 12 : 9} className="map-live-vehicle-halo" />
+            <circle r={globalView ? 6 : 4.5} className="map-live-vehicle-dot" />
+            <title>{`车辆 ${vehicle.track_id}${vehicle.speed_cm_s == null ? "" : ` · ${Number(vehicle.speed_cm_s).toFixed(1)} cm/s`}`}</title>
+          </g>
+        ))}
         {visibleCameraViews.map((camera, index) => (
           <g key={`${camera.id}-${index}`} className={cx("map-camera", camera.id === activeCamera?.id && "selected")}>
             <polygon points={fovPolygon(camera)} className="map-camera-fov" />
@@ -684,12 +746,19 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
         <span><i className="lane" />行车道</span>
         <span><i className="junction" />路口区域</span>
         {globalView && <span><i className="camera" />摄像头视域</span>}
-        <span><i className="free" />畅通</span>
-        <span><i className="slow" />缓行</span>
-        <span><i className="congested" />拥堵</span>
+        {showVehicles ? (
+          <span><i className="vehicle" />实时车辆 {vehicles.length}</span>
+        ) : (
+          <>
+            <span><i className="free" />畅通</span>
+            <span><i className="slow" />缓行</span>
+            <span><i className="congested" />拥堵</span>
+          </>
+        )}
       </div>
       {cameraState?.ready === false && <p>当前摄像头仅有 {cameraState.point_count} 个标定点，暂不生成世界坐标热力图。</p>}
-      {cameraState?.ready !== false && !Object.keys(laneStats).length && <p>等待车辆轨迹投影到道路模型</p>}
+      {cameraState?.ready !== false && !showVehicles && !Object.keys(laneStats).length && <p>等待车辆轨迹投影到道路模型</p>}
+      {cameraState?.ready !== false && showVehicles && !vehicles.length && <p>等待实时车辆坐标</p>}
     </div>
   );
 }
@@ -726,6 +795,7 @@ function PreviewSlot({ slotIndex, cameraId, cameras, statuses, streamVersion, on
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
   const [cameras, setCameras] = useState([]);
   const [statuses, setStatuses] = useState({});
   const [selectedCameraId, setSelectedCameraId] = useState("live1");
@@ -742,6 +812,7 @@ function App() {
   const [whitelistMessage, setWhitelistMessage] = useState("");
   const [viewMode, setViewMode] = useState("monitor");
   const [heatmapOpen, setHeatmapOpen] = useState(false);
+  const [heatmapDisplayMode, setHeatmapDisplayMode] = useState("heat");
   const [phoneUrl, setPhoneUrl] = useState(DEFAULT_PHONE_URL);
   const [selectedModelName, setSelectedModelName] = useState("auto");
   const [modelConfig, setModelConfig] = useState({
@@ -782,6 +853,16 @@ function App() {
   const [incidentNotes, setIncidentNotes] = useState({});
   const [resetPasswords, setResetPasswords] = useState({});
   const [schedulerState, setSchedulerState] = useState({ enabled: true, active: [], decisions: [] });
+  const [multiHeatmapCameraIds, setMultiHeatmapCameraIds] = useState(null);
+  const [multiRoadHeatmap, setMultiRoadHeatmap] = useState({ points: [], vehicles: [], lane_stats: {}, junction_stats: {} });
+  const [multiHeatmapDisplayMode, setMultiHeatmapDisplayMode] = useState("heat");
+  const [multiStreamsActive, setMultiStreamsActive] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("strans_theme", theme);
+  }, [theme]);
 
   const selectedCamera = cameras.find((item) => item.camera_id === selectedCameraId) || cameras[0];
   const selectedStatus = selectedCamera ? statuses[selectedCamera.camera_id] : null;
@@ -905,6 +986,32 @@ function App() {
     }, 2000);
     return () => window.clearInterval(timer);
   }, [viewMode, authToken, currentUser?.id]);
+
+  useEffect(() => {
+    if (multiHeatmapCameraIds === null && cameras.length) {
+      setMultiHeatmapCameraIds(cameras.slice(0, Math.min(2, cameras.length)).map((camera) => camera.camera_id));
+    }
+  }, [cameras, multiHeatmapCameraIds]);
+
+  useEffect(() => {
+    const cameraIds = multiHeatmapCameraIds || [];
+    if (viewMode !== "multiheatmap" || !authToken || !currentUser || !cameraIds.length) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const snapshot = await requestJson("/api/road-model/heatmap");
+        if (!cancelled) setMultiRoadHeatmap(heatmapForCameras(snapshot, cameraIds));
+      } catch (error) {
+        if (!cancelled) setFeatureMessage(`多摄像头热力图加载失败：${error.message}`);
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [viewMode, authToken, currentUser?.id, multiHeatmapCameraIds]);
 
   const refresh = useCallback(async () => {
     if (!authToken || !currentUser) return;
@@ -1533,6 +1640,95 @@ function App() {
     }
   }
 
+  function updateMultiCameraSelection(nextIds) {
+    setMultiStreamsActive(false);
+    setMultiHeatmapCameraIds(nextIds);
+  }
+
+  async function startMultiCameras() {
+    const cameraIds = multiHeatmapCameraIds || [];
+    if (!cameraIds.length) {
+      setFeatureMessage("请至少选择一路摄像头。");
+      return;
+    }
+    setBusy(true);
+    try {
+      const results = await Promise.allSettled(cameraIds.map((cameraId) => requestJson(`/api/cameras/${cameraId}/start`, { method: "POST" })));
+      const started = results.filter((result) => result.status === "fulfilled").length;
+      setMultiStreamsActive(started > 0);
+      setStreamVersion(Date.now());
+      setFeatureMessage(`已启动 ${started}/${cameraIds.length} 路摄像头并接入联合热力图。`);
+      addLog(`多摄像头热力图启动：${started}/${cameraIds.length} 路`);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function stopMultiCameras() {
+    const cameraIds = multiHeatmapCameraIds || [];
+    setBusy(true);
+    try {
+      await Promise.allSettled(cameraIds.map((cameraId) => requestJson(`/api/cameras/${cameraId}/stop`, { method: "POST" })));
+      setMultiStreamsActive(false);
+      setFeatureMessage(`已停止 ${cameraIds.length} 路摄像头。`);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function downloadHeatmapImage() {
+    const svg = document.querySelector(".heatmap-modal .modeled-heatmap svg");
+    if (!svg) return;
+
+    const clone = svg.cloneNode(true);
+    const viewBox = svg.viewBox.baseVal;
+    const width = 1600;
+    const height = Math.max(1, Math.round(width * viewBox.height / Math.max(viewBox.width, 1)));
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("width", String(width));
+    clone.setAttribute("height", String(height));
+
+    const styleProperties = [
+      "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity", "stroke-dasharray",
+      "stroke-linecap", "stroke-linejoin", "opacity", "color", "font-family", "font-size",
+      "font-weight", "paint-order", "vector-effect",
+    ];
+    const sourceElements = [svg, ...svg.querySelectorAll("*")];
+    const clonedElements = [clone, ...clone.querySelectorAll("*")];
+    sourceElements.forEach((element, index) => {
+      const computed = window.getComputedStyle(element);
+      styleProperties.forEach((property) => {
+        clonedElements[index].style.setProperty(property, computed.getPropertyValue(property));
+      });
+    });
+
+    const source = new XMLSerializer().serializeToString(clone);
+    const sourceUrl = URL.createObjectURL(new Blob([source], { type: "image/svg+xml;charset=utf-8" }));
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(sourceUrl);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const imageUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        link.href = imageUrl;
+        link.download = `strans-${heatmapDisplayMode}-${selectedCameraId || "all"}-${timestamp}.png`;
+        link.click();
+        URL.revokeObjectURL(imageUrl);
+      }, "image/png");
+    };
+    image.onerror = () => URL.revokeObjectURL(sourceUrl);
+    image.src = sourceUrl;
+  }
+
   async function saveReportConfig() {
     setBusy(true);
     try {
@@ -1591,6 +1787,7 @@ function App() {
   }
 
   const visibleCameras = cameras.slice(0, 12);
+  const selectedMultiCameras = visibleCameras.filter((camera) => (multiHeatmapCameraIds || []).includes(camera.camera_id));
   const algorithmState = dashboard?.algorithm;
   const algorithmReady = algorithmState?.status === "ready";
   const isAdmin = currentUser?.role === "admin";
@@ -1623,6 +1820,7 @@ function App() {
     <main className="app-shell">
       {!currentUser ? (
         <section className="auth-page">
+          <ThemeToggle theme={theme} onToggle={() => setTheme((current) => current === "dark" ? "light" : "dark")} className="auth-theme-toggle" />
           <form className="auth-card" onSubmit={submitAuth}>
             <div className="brand auth-brand">
               <span>
@@ -1713,6 +1911,7 @@ function App() {
           <button type="button" className={cx("nav-switch", viewMode === "reports" && "active")} onClick={() => setViewMode("reports")}>
             智能报告
           </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((current) => current === "dark" ? "light" : "dark")} />
           <span className={cx("service-pill", isAdmin ? "ok" : "idle")}>
             <CheckCircle2 size={16} />
             {currentUser.username}：{isAdmin ? "管理员" : "普通用户"}
@@ -1738,6 +1937,7 @@ function App() {
         <nav className="feature-center-nav" aria-label="功能中心">
           <strong><Settings2 size={17} />功能中心</strong>
           <button type="button" className={cx(viewMode === "analytics" && "active")} onClick={() => setViewMode("analytics")}><BarChart3 size={15} />数据趋势</button>
+          <button type="button" className={cx(viewMode === "multiheatmap" && "active")} onClick={() => setViewMode("multiheatmap")}><Flame size={15} />多摄像头热力图</button>
           <button type="button" className={cx(viewMode === "history" && "active")} onClick={() => setViewMode("history")}><Database size={15} />历史记录</button>
           <button type="button" className={cx(viewMode === "incidents" && "active")} onClick={() => setViewMode("incidents")}><Bell size={15} />告警处置</button>
           <button type="button" className={cx(viewMode === "account" && "active")} onClick={() => setViewMode("account")}><KeyRound size={15} />账号安全</button>
@@ -1754,6 +1954,67 @@ function App() {
 
       {viewMode === "analytics" ? (
         <DetectionTrendView records={history} />
+      ) : viewMode === "multiheatmap" ? (
+        <section className="feature-page multiheatmap-page">
+          <Panel
+            title="多摄像头联合热力图"
+            icon={<Flame size={18} />}
+            action={<div className="multiheatmap-actions">
+              <button type="button" disabled={busy || !(multiHeatmapCameraIds || []).length} onClick={startMultiCameras}><Play size={15} />启动所选</button>
+              <button type="button" disabled={busy || !multiStreamsActive} onClick={stopMultiCameras}><Square size={14} />停止所选</button>
+            </div>}
+          >
+            <div className="multiheatmap-layout">
+              <aside className="multiheatmap-selector">
+                <header>
+                  <strong>摄像头选择</strong>
+                  <span>{(multiHeatmapCameraIds || []).length}/{visibleCameras.length}</span>
+                </header>
+                <div className="multiheatmap-selection-actions">
+                  <button type="button" onClick={() => updateMultiCameraSelection(visibleCameras.map((camera) => camera.camera_id))}>全选</button>
+                  <button type="button" onClick={() => updateMultiCameraSelection([])}>清空</button>
+                </div>
+                <div className="multiheatmap-camera-list">
+                  {visibleCameras.map((camera) => {
+                    const checked = (multiHeatmapCameraIds || []).includes(camera.camera_id);
+                    const status = statuses[camera.camera_id];
+                    return <label key={camera.camera_id} className={cx(checked && "selected")}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => updateMultiCameraSelection(checked
+                          ? (multiHeatmapCameraIds || []).filter((id) => id !== camera.camera_id)
+                          : [...(multiHeatmapCameraIds || []), camera.camera_id])}
+                      />
+                      <span><strong>{camera.name}</strong><small>{camera.location || camera.camera_id}</small></span>
+                      <i className={cx(status?.running && "running")} title={statusText(status)} />
+                    </label>;
+                  })}
+                </div>
+              </aside>
+              <div className="multiheatmap-content">
+                <div className="multiheatmap-toolbar">
+                  <div className="heatmap-mode-switch" role="group" aria-label="联合热力图展示形式">
+                    <button type="button" className={cx(multiHeatmapDisplayMode === "heat" && "active")} onClick={() => setMultiHeatmapDisplayMode("heat")}>拥堵热力</button>
+                    <button type="button" className={cx(multiHeatmapDisplayMode === "vehicles" && "active")} onClick={() => setMultiHeatmapDisplayMode("vehicles")}>车辆红点</button>
+                  </div>
+                  <span>活动车辆 {multiRoadHeatmap.active_track_count || 0}</span>
+                </div>
+                <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={multiRoadHeatmap} cameraId="" globalView displayMode={multiHeatmapDisplayMode} />
+                {multiStreamsActive && <div className="multiheatmap-streams">
+                  {selectedMultiCameras.map((camera) => (
+                    <article key={camera.camera_id}>
+                      {statuses[camera.camera_id]?.running ? (
+                        <img src={`${API_BASE}/api/cameras/${camera.camera_id}/model-mjpeg?model_name=auto&task_mode=traffic&v=${streamVersion}`} alt={`${camera.name} 检测流`} />
+                      ) : <div className="multiheatmap-stream-offline">未启动</div>}
+                      <span>{camera.name}</span>
+                    </article>
+                  ))}
+                </div>}
+              </div>
+            </div>
+          </Panel>
+        </section>
       ) : viewMode === "history" ? (
         <section className="history-page">
           <Panel
@@ -2426,16 +2687,18 @@ function App() {
 
         <aside className="right-column">
           {analysisMode === "traffic" ? <Panel
-            title="当前视角拥堵图"
+            title="当前视角道路图"
             icon={<Flame size={18} />}
-            action={
-              <button type="button" className="text-action" onClick={() => setHeatmapOpen(true)}>
-                查看大图
-              </button>
-            }
+            action={<button type="button" className="text-action" onClick={() => setHeatmapOpen(true)}>查看大图</button>}
           >
+            <div className="heatmap-view-toolbar">
+              <div className="heatmap-mode-switch" role="group" aria-label="道路图展示形式">
+                <button type="button" className={cx(heatmapDisplayMode === "heat" && "active")} onClick={() => setHeatmapDisplayMode("heat")}>拥堵热力</button>
+                <button type="button" className={cx(heatmapDisplayMode === "vehicles" && "active")} onClick={() => setHeatmapDisplayMode("vehicles")}>车辆红点</button>
+              </div>
+            </div>
             <button type="button" className="heatmap-button" onClick={() => setHeatmapOpen(true)}>
-              <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} />
+              <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} displayMode={heatmapDisplayMode} />
             </button>
           </Panel> : <Panel title="道路异常识别" icon={<AlertTriangle size={18} />} className="anomaly-mode-panel">
             <div className="anomaly-mode-copy">
@@ -2501,16 +2764,22 @@ function App() {
           <section className="heatmap-modal">
             <header>
               <div>
-                <h2>全局道路拥堵图</h2>
+                <h2>{heatmapDisplayMode === "vehicles" ? "全局道路图 · 实时车辆" : "全局道路图 · 拥堵热力"}</h2>
                 <p>{selectedCamera?.name || "未选择摄像头"} · 检测目标 {(analysis.detections || []).length} 个 · 拥堵等级 {congestionText(stats.congestion_level)}</p>
               </div>
-              <button type="button" onClick={() => setHeatmapOpen(false)} aria-label="关闭拥堵图">
-                <X size={20} />
-              </button>
+              <div className="heatmap-modal-actions">
+                <button type="button" className="save-heatmap-button" onClick={downloadHeatmapImage}>
+                  <Download size={17} />
+                  保存图片
+                </button>
+                <button type="button" onClick={() => setHeatmapOpen(false)} aria-label="关闭道路图" title="关闭">
+                  <X size={20} />
+                </button>
+              </div>
             </header>
-            <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} globalView />
+            <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} globalView displayMode={heatmapDisplayMode} />
             <footer>
-              <span>车辆先投影到对应车道，再按车道内车辆数量与平均速度计算拥堵等级。</span>
+              <span>{heatmapDisplayMode === "vehicles" ? "车辆红点直接叠加在同一张热力图道路模型上。" : "车辆先投影到对应车道，再按车道内车辆数量与平均速度计算拥堵等级。"}</span>
               <span>
                 密度：{stats.density ?? "--"} / 平均速度：
                 {stats.avg_speed == null ? "--" : `${stats.avg_speed} ${stats.avg_speed_unit || "cm/s"}`}
