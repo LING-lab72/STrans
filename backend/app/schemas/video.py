@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 CameraType = Literal["sandtable", "phone", "usb", "custom"]
 CameraStatus = Literal["online", "offline", "connecting", "error"]
+HeatmapMode = Literal["auto", "road", "frame", "off"]
 
 
 class VideoStartRequest(BaseModel):
@@ -22,6 +23,7 @@ class CameraSource(BaseModel):
     stream_url: str
     location: str
     description: str | None = None
+    heatmap_mode: HeatmapMode = "auto"
     status: CameraStatus = "offline"
     selected: bool = False
 
@@ -32,6 +34,7 @@ class CameraCreateRequest(BaseModel):
     stream_url: str = Field(..., min_length=1, max_length=500)
     location: str = Field(..., min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=200)
+    heatmap_mode: HeatmapMode = "auto"
 
 
 class CameraUpdateRequest(BaseModel):
@@ -40,6 +43,7 @@ class CameraUpdateRequest(BaseModel):
     stream_url: str | None = Field(default=None, min_length=1, max_length=500)
     location: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=200)
+    heatmap_mode: HeatmapMode | None = None
 
 
 class VideoStatus(BaseModel):
