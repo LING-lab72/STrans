@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STrans 验收答辩 - HTML 排版母版 V1</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230c4f83'/%3E%3Cpath d='M14 38h36M20 26h24' stroke='%2367dce2' stroke-width='6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="deck.css">
+</head>
+<body>
+  <header class="deck-toolbar" aria-label="幻灯片工具栏">
+    <div class="deck-toolbar__title">STrans 验收答辩 · 16:9 HTML 母版 V1</div>
+    <div class="deck-toolbar__controls">
+      <button id="prev-slide" type="button" aria-label="上一页">←</button>
+      <span class="deck-progress" id="deck-progress" aria-live="polite">1 / 4</span>
+      <button id="next-slide" type="button" aria-label="下一页">→</button>
+      <button id="print-deck" type="button">打印</button>
+    </div>
+  </header>
+
+  <main class="deck" id="deck">
+    <section class="slide title-slide" id="slide-1" data-page="01">
+      <div>
+        <p class="eyebrow">软件工程实训 II · 验收答辩</p>
+        <h1>基于多源视觉感知的智慧交通沙盘监测与分析系统</h1>
+        <p class="lead">车辆感知 · 道路异常 · 空间映射 · 业务闭环</p>
+        <div class="pill-row" aria-label="项目关键词">
+          <span class="pill">React + FastAPI</span>
+          <span class="pill">YOLO + ByteTrack</span>
+          <span class="pill">CUDA 推理</span>
+          <span class="pill">软件工程验证</span>
+        </div>
+      </div>
+      <div class="title-mark" aria-hidden="true"><div class="title-mark__inner">STrans</div></div>
+      <span class="slide__brand">STrans · Smart Transportation Vision</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>15 秒说明项目对象、核心能力和“不是单一算法 Demo，而是可验证的软件系统”。</aside>
+
+    <section class="slide" id="slide-2" data-page="02">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">01 · 初始要求与验收导向</p>
+      <h2>从“云边端协同”要求，落到可运行、可验证、可演示的系统</h2>
+      <div class="grid-40-60">
+        <div class="stack">
+          <div class="card card--blue">
+            <h3>课程初始任务</h3>
+            <ul class="clean-list">
+              <li>边端视频采集与多源输入</li>
+              <li>电脑端 AI 分析与前端展示</li>
+              <li>车牌、车辆/拥堵、禁停、道路异常</li>
+              <li>系统、设备、模型、监控和统计管理</li>
+            </ul>
+          </div>
+          <div class="callout">验收重点不是“模型能跑”，而是需求、方案、实现、效果和成果物形成闭环。</div>
+        </div>
+        <div class="card card--tint">
+          <h3>评分权重决定答辩篇幅</h3>
+          <div class="score-list" aria-label="评分标准">
+            <div class="score-item"><span>实现效果</span><div class="score-item__bar"><span style="width:100%"></span></div><strong>26%</strong></div>
+            <div class="score-item"><span>需求准确性</span><div class="score-item__bar"><span style="width:77%"></span></div><strong>20%</strong></div>
+            <div class="score-item"><span>方案合理性</span><div class="score-item__bar"><span style="width:77%"></span></div><strong>20%</strong></div>
+            <div class="score-item"><span>实现完备性</span><div class="score-item__bar"><span style="width:77%"></span></div><strong>20%</strong></div>
+            <div class="score-item"><span>系统创新性</span><div class="score-item__bar"><span style="width:31%"></span></div><strong>8%</strong></div>
+            <div class="score-item"><span>团队合作</span><div class="score-item__bar"><span style="width:15%"></span></div><strong>4%</strong></div>
+            <div class="score-item"><span>成果物可读性</span><div class="score-item__bar"><span style="width:8%"></span></div><strong>2%</strong></div>
+          </div>
+        </div>
+      </div>
+      <span class="slide__brand">Requirements → Acceptance</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>30 秒。先引用初始要求，再说明后续页面为何重点展示真实效果、覆盖度和可追溯证据。</aside>
+
+    <section class="slide" id="slide-3" data-page="03">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">02 · 问题定义</p>
+      <h2>四类任务并不独立：真实难点来自尺度、时序、场景与工程约束叠加</h2>
+      <div class="grid-2">
+        <div class="stack">
+          <div class="card card--blue"><h3>沙盘小目标与遮挡</h3><p>车辆和车牌像素少、视角变化大，单帧检测与 OCR 容易波动。</p></div>
+          <div class="card card--cyan"><h3>车辆—轨迹—车牌关联</h3><p>识别结果必须跨帧稳定，才能支持白名单和通行决策。</p></div>
+        </div>
+        <div class="stack">
+          <div class="card card--amber"><h3>道路标线与阴影误报</h3><p>高对比箭头、灯光和相机轻微抖动会被误认为道路异常。</p></div>
+          <div class="card card--red"><h3>算法结果无法直接验收</h3><p>还需要权限、历史、告警、证据、调度和真实前端形成软件闭环。</p></div>
+        </div>
+      </div>
+      <div class="problem-chain">
+        <div class="problem-chain__step"><strong>问题</strong><span>复杂真实场景</span></div>
+        <div class="problem-chain__step"><strong>约束</strong><span>数据与算力有限</span></div>
+        <div class="problem-chain__step"><strong>方案</strong><span>模型 + 时序 + 规则</span></div>
+        <div class="problem-chain__step"><strong>验证</strong><span>测试 + 数据 + 页面</span></div>
+        <div class="problem-chain__step"><strong>价值</strong><span>可运行、可追溯</span></div>
+      </div>
+      <span class="slide__brand">Problem → Constraint → Solution → Evidence</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>35 秒。把四个难点串成一个问题链，避免后续算法页像互不相关的功能清单。</aside>
+
+    <section class="slide" id="slide-4" data-page="04">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">03 · 目标与成果边界</p>
+      <h2>以四项视觉任务为核心，补齐运行、管理和证据三类工程能力</h2>
+      <div class="grid-3">
+        <div class="card card--blue">
+          <h3>视觉感知</h3>
+          <ul class="check-list">
+            <li>车辆检测与跟踪</li><li>车牌识别与稳定</li><li>道路异常候选</li><li>道路语义分割</li>
+          </ul>
+        </div>
+        <div class="card card--cyan">
+          <h3>交通分析</h3>
+          <ul class="check-list">
+            <li>白名单通行决策</li><li>速度和密度估计</li><li>道路/路口映射</li><li>拥堵与禁停判断</li>
+          </ul>
+        </div>
+        <div class="card card--amber">
+          <h3>软件闭环</h3>
+          <ul class="check-list">
+            <li>多源视频与状态</li><li>权限、历史和告警</li><li>证据与审计</li><li>模型调度与报告</li>
+          </ul>
+        </div>
+      </div>
+      <blockquote class="quote" style="margin-top: 28px">成果定位：二维道路模型与视觉分析平台。无完整人工真值的统计按“样例结果”表述；道路异常输出为候选事件并需要复核。</blockquote>
+      <span class="slide__brand">Scope · Delivered / Limited</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>25 秒。明确哪些已实现、哪些只能作为候选或估计，提前建立可信边界。</aside>
+
+    <section class="slide" id="slide-5" data-page="05">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">04 · 系统方案</p>
+      <h2>采集—识别—分析—处置—归档：完整的软件闭环</h2>
+      <div class="grid-60-40" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/component-architecture.svg" alt="STrans 系统组件架构图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>统一入口</h3><p>CameraHub 管理多源视频，FastAPI 编排算法与业务接口。</p></div>
+          <div class="card card--cyan"><h3>算法解耦</h3><p>车辆、车牌、道路异常、道路语义和空间逻辑按服务分层。</p></div>
+          <div class="card card--amber"><h3>证据闭环</h3><p>React 展示，SQLite 留存历史、告警、处置和证据元数据。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Architecture · Current Implementation</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>40 秒。只讲三个边界和一条主链，不逐个念组件名称。</aside>
+
+    <section class="slide" id="slide-6" data-page="06">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">05 · 功能模块与角色</p>
+      <h2>普通用户关注态势，管理员负责配置、治理与追溯</h2>
+      <div class="grid-60-40" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/use-case-overview.svg" alt="STrans 答辩版系统用例图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>普通用户</h3><p>实时监控、任务切换、历史查询、告警处置与态势报告。</p></div>
+          <div class="card card--cyan"><h3>管理员</h3><p>摄像头、模型、白名单、调度、用户权限、审计与道路模型。</p></div>
+          <div class="card card--amber"><h3>系统引擎</h3><p>多源取帧、视觉识别、道路逻辑、结果存储和证据归档。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Use Cases · Role Boundary</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>25 秒。完整用例图放报告，这里只说明角色边界与六类核心用例。</aside>
+
+    <section class="slide" id="slide-7" data-page="07">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">06 · 车辆与车牌算法</p>
+      <h2>从单帧目标框，演进为“检测—跟踪—OCR—决策”的时序链路</h2>
+      <div class="grid-40-60" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/vehicle-recognition-activity.svg" alt="车辆检测跟踪与车牌决策活动图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>先召回，再解释</h3><p>YOLO 检测与 ByteTrack 跟踪后，叠加道路 ROI、类别、面积和外观过滤。</p></div>
+          <div class="card card--cyan"><h3>用时序降低波动</h3><p>视觉 ID 恢复、检测框平滑、轨迹记忆和车牌多帧稳定共同抑制抖动。</p></div>
+          <div class="card card--amber"><h3>形成业务输出</h3><p>车辆裁剪 OCR 与周期全帧 OCR 互补，再连接白名单、速度、密度与拥堵。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Vehicle · Track · Plate · Decision</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>40 秒。重点讲为什么需要时序记忆和双路 OCR，不逐个讲阈值。</aside>
+
+    <section class="slide" id="slide-8" data-page="08">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">07 · 真实运行效果</p>
+      <h2>同一条链路同时输出车辆、轨迹、车牌、速度和拥堵态势</h2>
+      <div class="grid-60-40" style="height: 610px">
+        <figure class="figure figure--cover">
+          <img src="../../../output/ppt-assets/images/frontend_realtime_live12.png" alt="真实前端实时识别全景">
+          <figcaption class="figure__caption">真实前端运行截图：CUDA 已连接，多车辆检测与实时状态同步展示</figcaption>
+        </figure>
+        <div class="stack">
+          <div class="metric"><strong>3 辆</strong><span>代表场景连续 24 帧稳定车辆数</span></div>
+          <div class="card card--blue"><h3>可演示结果</h3><p>视频画面、检测框、轨迹标识、车牌文本、拥堵状态与事件面板同屏呈现。</p></div>
+          <div class="card card--amber"><h3>答辩口径</h3><p>车牌文本属于真实样例输出，准确率仍需逐帧人工真值复核。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Real Stream · CUDA · Frontend</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>25 秒后切 6 秒视频；把静态页作为解释，把实时短片作为效果证据。</aside>
+
+    <section class="slide" id="slide-9" data-page="09">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">08 · 道路异常算法</p>
+      <h2>多证据解释道路变化，并公开保留“标线误报”失败案例</h2>
+      <div class="grid-40-60" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/road-anomaly-activity.svg" alt="道路异常多证据活动图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>变化候选</h3><p>道路 ROI 内结合帧差、背景模型和光流稳定性产生候选区域。</p></div>
+          <div class="card card--cyan"><h3>合法目标解释</h3><p>先由 YOLO/跟踪结果解释车辆与行人，再用颜色、纹理和形状过滤。</p></div>
+          <div class="card card--red"><h3>当前缺陷 S2</h3><p>高对比道路箭头仍可能形成候选；事件冷却和生命周期合并不足会造成重复告警。</p></div>
+          <blockquote class="quote">正确表述：“道路异常候选 + 多帧确认 + 人工复核”，而非完全自动判定。</blockquote>
+        </div>
+      </div>
+      <span class="slide__brand">Candidate · Evidence · Review</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>40 秒。主动展示失败案例，并说明它如何驱动下一轮标线抑制和事件去重。</aside>
+
+    <section class="slide" id="slide-10" data-page="10">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">09 · 道路建模与空间分析</p>
+      <h2>把像素坐标映射到道路语义，才能回答“在哪条路、哪个路口”</h2>
+      <div class="grid-2" style="height: 610px">
+        <figure class="figure figure--cover">
+          <img src="../../../output/playwright/road-modeler/road-modeler-page.png" alt="项目内置道路建模工具">
+          <figcaption class="figure__caption">项目内置道路拓扑与摄像头标定工具</figcaption>
+        </figure>
+        <div class="stack">
+          <figure class="figure" style="height: 350px">
+            <img src="../../../output/ppt-assets/diagrams/road-model-pipeline.svg" alt="道路建模到实时分析流程">
+          </figure>
+          <div class="card card--cyan"><h3>配置产物</h3><p>节点组、车道、建筑物、摄像头标定导出为 <code>road_logic_modeler.v1</code> JSON，经人工审核后供 RoadLogicService 使用。</p></div>
+          <div class="card card--amber"><h3>当前边界</h3><p>发布审核以人工流程为主；后续再补草稿、校验、发布和回滚状态。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Geometry → Road Semantics → Traffic State</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>35 秒。用“三步”讲清：可视化建模、JSON 配置、实时道路映射。</aside>
+
+    <section class="slide" id="slide-11" data-page="11">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">10 · 性能与部署</p>
+      <h2>根据任务优先级和资源压力自适应切换，而不是固定推理参数</h2>
+      <div class="grid-60-40" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/adaptive-scheduler-state.svg" alt="自适应模型调度状态图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>五档策略</h3><p>quality、balanced、realtime、protect、anomaly 根据任务与资源状态切换。</p></div>
+          <div class="card card--cyan"><h3>滞回与缓存</h3><p>结合 CPU/GPU/显存、推理耗时和任务类型，避免频繁震荡。</p></div>
+          <div class="card card--amber"><h3>环境结论</h3><p>当前 CUDA 环境改善的是推理时延；设备和 Python 版本差异仍会影响结果，不等同于自动提高精度。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Adaptive Scheduling · GPU/CPU</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>30 秒。解释调度目的和环境边界，不把 CUDA 描述成精度优化。</aside>
+
+    <section class="slide" id="slide-12" data-page="12">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">11 · 软件工程与数据闭环</p>
+      <h2>识别结果只有被记录、处置和追溯，才成为系统能力</h2>
+      <div class="grid-60-40" style="height: 610px">
+        <figure class="figure">
+          <img src="../../../output/ppt-assets/diagrams/data-closed-loop-sequence.svg" alt="识别结果告警证据与管理闭环时序图">
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>统一结果</h3><p><code>AnalysisResult</code> 连接算法服务、API、前端和持久化。</p></div>
+          <div class="card card--cyan"><h3>证据包</h3><p>原始帧、标注帧、JSON、路径和 SHA-256 清单支持追溯。</p></div>
+          <div class="card card--amber"><h3>治理能力</h3><p>RBAC、账号、审计、告警处置、历史导出和智能报告组成管理闭环。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Analysis → Incident → Evidence → Audit</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>35 秒。把软件工程价值落到“谁看、谁处置、如何证明、如何追溯”。</aside>
+
+    <section class="slide" id="slide-13" data-page="13">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">12 · 测试与验收证据</p>
+      <h2>107 个自动化测试单元 + 真实沙盘 CUDA 数据 + 前端实时流验证</h2>
+      <div class="metric-row">
+        <div class="metric"><strong>81/81</strong><span>主项目自动化测试</span></div>
+        <div class="metric"><strong>26/26</strong><span>道路建模工具测试</span></div>
+        <div class="metric"><strong>65</strong><span>真实数据抽样帧</span></div>
+        <div class="metric"><strong>12</strong><span>真实沙盘机位覆盖</span></div>
+      </div>
+      <div class="grid-2" style="height: 485px; margin-top: 24px">
+        <figure class="figure figure--cover">
+          <img src="../../../output/dataset-evaluation/run-2026-07-14-gpu/selected-contact-sheet.jpg" alt="真实沙盘数据代表识别结果">
+          <figcaption class="figure__caption">真实沙盘代表帧：多车、车牌、桥梁、隧道与停车区域</figcaption>
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>功能正确性</h3><p>后端、前端和道路建模桥接覆盖核心主流程。</p></div>
+          <div class="card card--cyan"><h3>真实环境可运行</h3><p>本地 CUDA 环境完成离线数据与实时前端链路验证。</p></div>
+          <div class="card card--red"><h3>结果边界清晰</h3><p>设备差异与真值不足会影响精度；箭头标线误报作为已知缺陷公开记录。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Verification · Evidence · Limitations</span>
+    </section>
+      <aside class="speaker-note"><strong>讲述重点：</strong>45 秒。强调 107 是测试单元口径；无完整真值时不宣称严格 Precision/Recall。</aside>
+
+    <section class="slide" id="slide-14" data-page="14">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">13 · 算法与工程演进</p>
+      <h2>提交历史证明：优化来自真实问题，而不是一次性堆叠功能</h2>
+      <figure class="figure" style="height: 360px">
+        <img src="../../../output/ppt-assets/diagrams/algorithm-evolution-flow.svg" alt="核心算法演进路线图">
+      </figure>
+      <div class="grid-3" style="margin-top: 24px">
+        <div class="card card--blue"><h3>阶段一：跑通</h3><p>先建立视频、检测、OCR 和前端闭环，验证技术可行性。</p></div>
+        <div class="card card--cyan"><h3>阶段二：稳定</h3><p>围绕重框、OCR 波动、道路语义和异常误报加入时序与规则。</p></div>
+        <div class="card card--amber"><h3>阶段三：交付</h3><p>补齐调度、证据、测试、道路建模和文档，形成结题基线。</p></div>
+      </div>
+      <span class="slide__brand">Git Evidence · Iterative Engineering</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>30 秒。按“发现什么问题—做了什么改进—留下什么证据”讲，提交号只作页脚依据。</aside>
+
+    <section class="slide" id="slide-15" data-page="15">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">14 · 成果与创新</p>
+      <h2>从视觉算法样例，扩展为面向真实沙盘的可配置、可追溯系统</h2>
+      <div class="grid-2" style="height: 610px">
+        <figure class="figure figure--cover">
+          <img src="../../../output/dataset-evaluation/inventory/contact-sheet.jpg" alt="十二路真实沙盘机位总览">
+          <figcaption class="figure__caption">12 路真实沙盘机位：覆盖道路、桥梁、隧道、停车和综合场景</figcaption>
+        </figure>
+        <div class="stack">
+          <div class="card card--blue"><h3>联合感知</h3><p>车辆—轨迹—车牌—白名单在同一时序链中协同决策。</p></div>
+          <div class="card card--cyan"><h3>几何与视觉融合</h3><p>二维道路拓扑、单应映射、道路掩膜和交通状态形成空间语义。</p></div>
+          <div class="card card--amber"><h3>可解释异常</h3><p>帧差、光流、合法目标解释和外观线索共同形成候选证据。</p></div>
+          <div class="card card--blue"><h3>完整工程闭环</h3><p>权限、告警、证据、审计、调度、测试与真实演示共同支撑验收。</p></div>
+        </div>
+      </div>
+      <span class="slide__brand">Outcome · Innovation · Value</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>30 秒。创新点要与前文证据对应，不把计划功能写入创新成果。</aside>
+
+    <section class="slide" id="slide-16" data-page="16">
+      <div class="slide__rule"></div>
+      <p class="eyebrow">15 · 结论、限制与演示衔接</p>
+      <h2>结题演示有条件通过；下一步从“样例可用”走向“指标可证”</h2>
+      <div class="grid-2">
+        <div class="stack">
+          <div class="card card--red"><h3>仍需关闭</h3><ul class="risk-list check-list"><li>道路标线误报与事件洪泛</li><li>完整人工真值和事件级指标</li><li>API 权限矩阵、断流恢复和长稳测试</li></ul></div>
+          <div class="card card--amber"><h3>后续改进</h3><p>扩充标注数据，完成摄像头标定；加入事件冷却/合并、发布回滚和设备环境基线。</p></div>
+        </div>
+        <div class="stack">
+          <div class="card card--blue"><h3>10 分钟演示路线</h3>
+            <ol class="clean-list"><li>登录并启动真实视频</li><li>车辆、车牌、速度与拥堵</li><li>道路异常候选与失败案例</li><li>道路建模、热力和空间映射</li><li>告警处置、证据、历史与调度</li></ol>
+          </div>
+          <blockquote class="quote">我们的核心结论：系统已形成从真实视频输入到可追溯业务结果的闭环，同时对精度边界和遗留缺陷保持可验证、可解释。</blockquote>
+        </div>
+      </div>
+      <div class="center" style="margin-top: 24px"><h3 style="font-size: 32px; color: var(--blue-deep)">谢谢 · Questions & Demo</h3></div>
+      <span class="slide__brand">Conclusion · Next Step · Demo</span>
+    </section>
+    <aside class="speaker-note"><strong>讲述重点：</strong>20 秒结束报告并切换系统演示；不在结尾新增前文未证明的能力。</aside>
+  </main>
+
+  <script src="deck.js"></script>
+</body>
+</html>

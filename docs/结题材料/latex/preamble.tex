@@ -1,0 +1,201 @@
+% STrans 结题文档统一 LaTeX 样式
+\usepackage[a4paper,top=2.5cm,bottom=2.4cm,left=2.7cm,right=2.4cm,headheight=16pt]{geometry}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Consolas}
+\usepackage{xcolor}
+\usepackage{tikz}
+\definecolor{STransNavy}{HTML}{10233F}
+\definecolor{STransBlue}{HTML}{1769AA}
+\definecolor{STransCyan}{HTML}{008F95}
+\definecolor{STransAmber}{HTML}{D98420}
+\definecolor{STransRed}{HTML}{BD493C}
+\definecolor{STransMist}{HTML}{F3F7FA}
+\definecolor{STransLine}{HTML}{D9E3EB}
+
+\usepackage{graphicx}
+\graphicspath{{assets/}}
+\usepackage{adjustbox}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{calc}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{fvextra}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[most]{tcolorbox}
+\usepackage{etoolbox}
+\usepackage{microtype}
+\usepackage{xurl}
+\usepackage{hyperref}
+\usepackage{bookmark}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=STransBlue,
+  urlcolor=STransCyan,
+  citecolor=STransBlue,
+  pdfcreator={XeLaTeX + Pandoc},
+  pdfsubject={STrans 智慧交通视觉感知系统结题材料}
+}
+\urlstyle{same}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{STransNavy}STrans 智慧交通视觉感知系统}
+\fancyhead[R]{\small\color{STransBlue}\ReportShortTitle}
+\fancyfoot[C]{\small\color{gray}\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\titleformat{\chapter}[hang]
+  {\Huge\bfseries\color{STransNavy}}
+  {\thechapter}{0.8em}{}
+\titlespacing*{\chapter}{0pt}{-18pt}{22pt}
+\titleformat{\section}
+  {\Large\bfseries\color{STransBlue}}
+  {\thesection}{0.7em}{}
+\titleformat{\subsection}
+  {\large\bfseries\color{STransNavy}}
+  {\thesubsection}{0.7em}{}
+
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\setlength{\emergencystretch}{3em}
+\hbadness=5000
+\setlist{nosep,leftmargin=2.2em}
+\setlist[itemize]{label=\textcolor{STransBlue}{\small$\blacksquare$}}
+\setlist[enumerate]{label=\textcolor{STransBlue}{\arabic*.}}
+
+\captionsetup{
+  font=small,
+  labelfont={bf,color=STransNavy},
+  textfont={color=STransNavy},
+  labelsep=quad,
+  justification=centering
+}
+\floatplacement{figure}{htbp}
+
+\lstdefinestyle{strans}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{STransMist},
+  frame=single,
+  rulecolor=\color{STransLine},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  keywordstyle=\color{STransBlue}\bfseries,
+  commentstyle=\color{STransCyan},
+  stringstyle=\color{STransAmber},
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=0.8em,
+  belowskip=0.8em
+}
+\lstset{style=strans}
+
+\newtcolorbox{factbox}[1][]{
+  enhanced,
+  breakable,
+  colback=STransMist,
+  colframe=STransBlue,
+  boxrule=0.6pt,
+  leftrule=3pt,
+  arc=1mm,
+  title=#1,
+  fonttitle=\bfseries,
+  coltitle=STransNavy
+}
+\newtcolorbox{riskbox}[1][]{
+  enhanced,
+  breakable,
+  colback=orange!4,
+  colframe=STransAmber,
+  boxrule=0.6pt,
+  leftrule=3pt,
+  arc=1mm,
+  title=#1,
+  fonttitle=\bfseries,
+  coltitle=STransNavy
+}
+
+\AtBeginEnvironment{longtable}{\small\setlength{\tabcolsep}{3.5pt}\sloppy}
+\AtBeginEnvironment{table}{\small}
+\renewcommand{\arraystretch}{1.24}
+
+% Pandoc body-only LaTeX compatibility helpers.
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\passthrough}[1]{#1}
+\providecommand{\real}[1]{#1}
+\providecommand{\pandocbounded}[1]{%
+  \begin{center}
+  \begin{adjustbox}{max width=0.94\linewidth,max totalheight=0.72\textheight,keepaspectratio}
+  #1
+  \end{adjustbox}
+  \end{center}
+}
+
+\newcommand{\STransTitlePage}[3]{
+  \hypersetup{pageanchor=false}
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \begin{tikzpicture}[remember picture,overlay]
+      \fill[STransNavy] (current page.north west) rectangle ([yshift=-2.2cm]current page.north east);
+      \fill[STransCyan] ([yshift=-2.2cm]current page.north west) rectangle ([yshift=-2.34cm]current page.north east);
+    \end{tikzpicture}
+    \vspace*{2.8cm}
+    {\sffamily\bfseries\color{STransBlue}\Large 软件工程实训 II · 结题交付材料\par}
+    \vspace{1.4cm}
+    {\sffamily\bfseries\color{STransNavy}\fontsize{30pt}{38pt}\selectfont #1\par}
+    \vspace{0.8cm}
+    {\sffamily\color{STransCyan}\Large #2\par}
+    \vspace{1.8cm}
+    \begin{tcolorbox}[colback=STransMist,colframe=STransLine,boxrule=0.5pt,arc=1mm]
+      \renewcommand{\arraystretch}{1.45}
+      \begin{tabularx}{\linewidth}{>{\bfseries\color{STransNavy}}p{3.0cm}X}
+        项目名称 & 基于多源视觉感知的智慧交通沙盘监测与分析系统 \\
+        文档版本 & #3 \\
+        项目组 & STrans 项目组 \\
+        指导教师 & 包尔固德 \\
+        编制日期 & 2026 年 7 月 \\
+      \end{tabularx}
+    \end{tcolorbox}
+    \vfill
+    {\small\color{gray}本文档依据当前仓库实现、系统测试、真实沙盘数据与 Git 提交历史编制。\par}
+    \vspace{0.5cm}
+    {\sffamily\bfseries\color{STransNavy}STrans · Smart Transportation Vision\par}
+  \end{titlepage}
+  \clearpage
+  \hypersetup{pageanchor=true}
+}
+
+\newcommand{\STransDocumentFront}[1]{
+  \pagenumbering{Roman}
+  \chapter*{文档说明}
+  \addcontentsline{toc}{chapter}{文档说明}
+  \begin{factbox}[事实与证据口径]
+    #1
+  \end{factbox}
+  \begin{riskbox}[统一限制说明]
+    无完整人工真值的数据只用于运行与样例统计，不作为严格 Precision、Recall 或 F1 结论；道路异常输出按候选事件、多帧确认和人工复核表述。CUDA 结果用于说明当前环境下的推理时延，不外推为精度保证。
+  \end{riskbox}
+  \tableofcontents
+  \clearpage
+  \pagenumbering{arabic}
+}
+
+\raggedbottom

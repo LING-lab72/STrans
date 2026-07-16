@@ -1,0 +1,24 @@
+\documentclass[UTF8,zihao=-4,openany,fontset=windows]{ctexrep}
+\newcommand{\ReportShortTitle}{结题综合报告}
+\input{preamble.tex}
+
+\begin{document}
+\STransTitlePage
+  {结题综合报告}
+  {需求、设计、使用、测试与总结的完整交付基线}
+  {V2.0 · 2026-07}
+\STransDocumentFront{本综合报告按软件工程交付顺序汇编需求分析、系统设计、软件使用说明、系统测试和项目总结五部分。各部分共用同一事实口径、统一图谱和真实证据，适合作为结题归档、验收审阅和后续维护的完整基线。}
+
+\part{需求与系统设计}
+\input{generated/requirements-body.tex}
+\FloatBarrier
+\input{generated/system-design-body.tex}
+\FloatBarrier
+
+\part{软件交付、验证与总结}
+\input{generated/software-manual-body.tex}
+\FloatBarrier
+\input{generated/system-test-body.tex}
+\FloatBarrier
+\input{generated/project-summary-body.tex}
+\end{document}

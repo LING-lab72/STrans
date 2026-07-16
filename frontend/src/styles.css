@@ -969,6 +969,112 @@ p {
   object-fit: contain;
 }
 
+.analysis-video-preview {
+  position: relative;
+  width: 100%;
+  max-height: clamp(360px, 43vh, 500px);
+  overflow: hidden;
+}
+
+.analysis-video-preview > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: clamp(360px, 43vh, 500px);
+  object-fit: contain;
+}
+
+.detection-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+}
+
+.detection-box {
+  position: absolute;
+  display: block;
+  border: 2px solid #35e4a6;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(8, 24, 34, 0.65), 0 0 12px rgba(53, 228, 166, 0.48);
+}
+
+.detection-box > em {
+  position: absolute;
+  top: -24px;
+  left: -2px;
+  max-width: 240px;
+  overflow: hidden;
+  padding: 3px 6px;
+  color: #081822;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #35e4a6;
+  border-radius: 3px 3px 3px 0;
+}
+
+.frame-heatmap-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.frame-heatmap-preview {
+  position: relative;
+  margin: 10px;
+  overflow: hidden;
+  background: #14202b;
+  border: 1px solid #d3e1ed;
+  border-radius: 8px;
+}
+
+.frame-heatmap-preview > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.road-schematic-loading {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  place-items: center;
+  color: #a6c5d8;
+  font-size: 13px;
+  background: #192734;
+}
+
+.frame-heat-spot {
+  position: absolute;
+  width: var(--heat-size);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(239, 68, 68, calc(0.78 * var(--heat-strength))) 0%, rgba(249, 115, 22, calc(0.5 * var(--heat-strength))) 32%, rgba(250, 204, 21, calc(0.28 * var(--heat-strength))) 52%, transparent 72%);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+
+.frame-heatmap-label {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 4px 7px;
+  color: #fff7ed;
+  background: rgba(124, 45, 18, 0.72);
+  border: 1px solid rgba(254, 215, 170, 0.55);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .empty-video {
   display: grid;
   justify-items: center;
@@ -1144,6 +1250,15 @@ select:focus {
 
 .heatmap-button .heatmap {
   cursor: zoom-in;
+}
+
+.heatmap-frame-copy,
+.heatmap-disabled-copy {
+  margin: 10px;
+  padding: 14px;
+  background: #f7fbff;
+  border: 1px solid #d3e1ed;
+  border-radius: 8px;
 }
 
 .heatmap-view-toolbar {
@@ -1819,7 +1934,8 @@ select:focus {
 }
 
 .feature-center-nav strong,
-.feature-center-nav button {
+.feature-center-nav button,
+.feature-center-nav a {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -1832,6 +1948,7 @@ select:focus {
   border-radius: 7px;
   font-size: 12px;
   font-weight: 850;
+  text-decoration: none;
 }
 
 .feature-center-nav strong {
@@ -1842,7 +1959,8 @@ select:focus {
 }
 
 .feature-center-nav button:hover,
-.feature-center-nav button.active {
+.feature-center-nav button.active,
+.feature-center-nav a:hover {
   color: #075985;
   background: #eaf7fd;
   border-color: #9bd8ef;

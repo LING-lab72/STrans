@@ -9,18 +9,37 @@ env/
 .env.*
 !.env.example
 !**/.env.example
+secret/
 *.jpg
 *.jpeg
 *.png
 !docs/images/*.png
+!docs/结题材料/assets/*.jpg
+!docs/结题材料/assets/*.png
 *.mp4
 *.avi
 *.pt
 *.pth
 *.onnx
+backend/data/models/
+backend/data/recordings/
 *.log
 *.db
 *.inspect.ndjson
 test-results/
 .DS_Store
 Thumbs.db
+
+# Binary docs
+*.pptx
+*.docx
+*.webp
+
+# Build / output
+output/
+outputs/
+tmp/
+logs/
+frontend/dist/
+frontend/test-results/
+docs/结题材料/latex/build/

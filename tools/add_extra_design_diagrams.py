@@ -73,7 +73,7 @@ def system_flow():
     y = 430
     w, h, gap = 520, 330, 75
     nodes = [
-        ("视频源输入", ["手机 IP Webcam", "ESP32-CAM", "本地沙盘视频"]),
+        ("视频源输入", ["手机 IP Webcam", "RTSP/MJPEG 摄像头", "本地沙盘视频"]),
         ("后端拉流", ["OpenCV 解码", "MJPEG 转发", "状态监测"]),
         ("图像预处理", ["缩放", "ROI 裁剪", "亮度增强"]),
         ("算法推理", ["YOLOv11 检测", "ByteTrack 跟踪", "车牌 / ID 识别"]),
@@ -140,9 +140,9 @@ def frontend_layout():
 def deployment():
     im = Image.new("RGB", (4200, 1800), "white")
     draw = ImageDraw.Draw(im)
-    title(draw, "部署结构图", "手机、ESP32-CAM、笔记本边缘服务、前端浏览器和本地数据文件之间的连接关系")
+    title(draw, "部署结构图", "手机/网络摄像头、笔记本分析服务、前端浏览器和本地数据文件之间的连接关系")
     box(draw, (140, 430, 760, 820), "手机摄像头", ["IP Webcam", "HTTP MJPEG / RTSP"], "#EFF6FF", "#2563EB")
-    box(draw, (140, 980, 760, 1370), "ESP32-CAM", ["HTTP Stream", "沙盘固定视角"], "#ECFEFF", "#0891B2")
+    box(draw, (140, 980, 760, 1370), "网络摄像头", ["RTSP / MJPEG", "沙盘固定视角"], "#ECFEFF", "#0891B2")
     box(draw, (1180, 500, 2050, 1320), "笔记本边缘服务", ["FastAPI 后端", "OpenCV 拉流", "YOLOv11 / ByteTrack", "S2M 增强预留"], "#F0FDF4", "#16A34A")
     box(draw, (2500, 420, 3200, 820), "前端浏览器", ["React + Vite", "浅色沙盘大屏", "MJPEG + REST"], "#FAF5FF", "#7C3AED")
     box(draw, (2500, 980, 3200, 1380), "本地数据", ["SQLite / JSONL", "统计 / 事件 / 配置"], "#FFF7ED", "#EA580C")

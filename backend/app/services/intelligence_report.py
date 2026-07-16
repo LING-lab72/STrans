@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from app.services.sqlite_utils import open_sqlite
+
 
 DEFAULT_API_BASE = "https://api.deepseek.com/v1"
 DEFAULT_MODEL = "deepseek-chat"
@@ -22,9 +24,7 @@ class IntelligenceReportService:
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.db_path)
-        connection.row_factory = sqlite3.Row
-        return connection
+        return open_sqlite(self.db_path)
 
     def _init_db(self) -> None:
         with self._connect() as connection:

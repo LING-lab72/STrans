@@ -1,5 +1,10 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { fetchCaptchaWithRetry, initialAuthForm } from "./auth";
+import { buildTrendChart } from "./analytics";
+import { CAMERA_TYPE_OPTIONS, monitorCameraOptions } from "./cameraTypes";
+import { frameDetectionBoxes, frameHeatmapSpots, rawCameraStreamUrl, resolveHeatmapMode, schematicRoadBaseUrl } from "./heatmap";
+import { roadModelerLinkAttributes } from "./roadModeler";
 import {
   Activity,
   AlertTriangle,
@@ -44,7 +49,6 @@ const TREND_METRICS = {
   event_count: { label: "事件数量", shortLabel: "事件", color: "#c76a16", tint: "#ffedd5" },
 };
 const TREND_LIMITS = [20, 50, 100];
-const CAMERA_CHART_COLORS = ["#0f7aa5", "#16856b", "#c76a16", "#7559a6", "#d1495b", "#64748b"];
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = API_REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -223,73 +227,7 @@ function DetectionTrendView({ records }) {
   const [metricKey, setMetricKey] = useState("vehicle_count");
   const [recordLimit, setRecordLimit] = useState(50);
   const metric = TREND_METRICS[metricKey];
-  const chart = useMemo(() => {
-    const width = 1000;
-    const height = 340;
-    const padding = { top: 24, right: 26, bottom: 52, left: 58 };
-    const selected = records.slice(0, recordLimit).reverse();
-    const values = selected.map((item) => Math.max(0, Number(item[metricKey]) || 0));
-    const maxValue = Math.max(1, ...values);
-    const plotWidth = width - padding.left - padding.right;
-    const plotHeight = height - padding.top - padding.bottom;
-    const baseline = padding.top + plotHeight;
-    const points = selected.map((item, index) => {
-      const value = values[index];
-      const x = padding.left + (selected.length > 1 ? (index / (selected.length - 1)) * plotWidth : plotWidth / 2);
-      const y = padding.top + plotHeight - (value / maxValue) * plotHeight;
-      return { item, value, x, y };
-    });
-    let total = 0;
-    let peak = 0;
-    const cameraTotals = new Map();
-    points.forEach((point) => {
-      total += point.value;
-      peak = Math.max(peak, point.value);
-      const cameraName = point.item.camera_id || "未标记摄像头";
-      cameraTotals.set(cameraName, (cameraTotals.get(cameraName) || 0) + point.value);
-    });
-    let cameraEntries = [...cameraTotals.entries()]
-      .filter(([, value]) => value > 0)
-      .sort((left, right) => right[1] - left[1]);
-    if (cameraEntries.length > 6) {
-      const otherTotal = cameraEntries.slice(5).reduce((sum, [, value]) => sum + value, 0);
-      cameraEntries = [...cameraEntries.slice(0, 5), ["其他摄像头", otherTotal]];
-    }
-    const cameraTotal = cameraEntries.reduce((sum, [, value]) => sum + value, 0);
-    let cameraOffset = 0;
-    const cameraDistribution = cameraEntries.map(([name, value], index) => {
-      const percentage = cameraTotal ? (value / cameraTotal) * 100 : 0;
-      const entry = { name, value, percentage, offset: cameraOffset, color: CAMERA_CHART_COLORS[index] };
-      cameraOffset += percentage;
-      return entry;
-    });
-    const linePath = points.map((point, index) => `${index ? "L" : "M"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
-    const areaPath = points.length
-      ? `${linePath} L ${points.at(-1).x.toFixed(2)} ${baseline} L ${points[0].x.toFixed(2)} ${baseline} Z`
-      : "";
-    const labelIndexes = [...new Set([0, Math.floor((points.length - 1) / 4), Math.floor((points.length - 1) / 2), Math.floor(((points.length - 1) * 3) / 4), points.length - 1])]
-      .filter((index) => index >= 0);
-    return {
-      width,
-      height,
-      padding,
-      baseline,
-      maxValue,
-      points,
-      tableRows: points.map((point) => point.item).reverse(),
-      cameraDistribution,
-      linePath,
-      areaPath,
-      labelIndexes,
-      barWidth: Math.max(4, Math.min(18, plotWidth / Math.max(points.length, 1) * 0.48)),
-      summary: {
-        total,
-        average: points.length ? total / points.length : 0,
-        peak,
-        latest: points.at(-1)?.value || 0,
-      },
-    };
-  }, [records, recordLimit, metricKey]);
+  const chart = useMemo(() => buildTrendChart(records, metricKey, recordLimit), [records, recordLimit, metricKey]);
 
   return (
     <section className="analytics-page">
@@ -763,6 +701,74 @@ function HeatmapView({ analysis, roadModel, roadHeatmap, cameraId, globalView = 
   );
 }
 
+function FrameHeatmapOverlay({ analysis, cameraId, roadMask }) {
+  const spots = frameHeatmapSpots(analysis, cameraId);
+  const hasRoadMask = Boolean(roadMask?.mask_data_url);
+  const maskStyle = hasRoadMask ? {
+    WebkitMaskImage: `url("${roadMask.mask_data_url}")`,
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskSize: "100% 100%",
+    maskImage: `url("${roadMask.mask_data_url}")`,
+    maskRepeat: "no-repeat",
+    maskSize: "100% 100%",
+  } : undefined;
+  return (
+    <div className="frame-heatmap-overlay" style={maskStyle} aria-label={`道路约束画面热力图，${hasRoadMask ? spots.length : 0} 个检测热点`}>
+      {hasRoadMask && spots.map((spot, index) => (
+        <span
+          className="frame-heat-spot"
+          key={`${spot.x}-${spot.y}-${index}`}
+          style={{ left: `${spot.x}%`, top: `${spot.y}%`, "--heat-size": `${spot.size}%`, "--heat-strength": spot.strength }}
+        />
+      ))}
+      <span className="frame-heatmap-label">{hasRoadMask ? "道路约束热力" : "道路掩膜加载中"}</span>
+    </div>
+  );
+}
+
+function FrameHeatmapView({ camera, status, analysis, roadMask }) {
+  if (!camera || !status?.running) {
+    return <p className="empty-copy heatmap-frame-copy">请先启动手机摄像头，热力图会基于同一路原始画面渲染。</p>;
+  }
+  const schematicUrl = schematicRoadBaseUrl(roadMask);
+  return (
+    <div className="frame-heatmap-preview" style={{ aspectRatio: `${status.frame_width || 16} / ${status.frame_height || 9}` }}>
+      {schematicUrl ? (
+        <img src={schematicUrl} alt={`${camera.name} 语义道路示意底板`} />
+      ) : (
+        <div className="road-schematic-loading" role="status">道路底板生成中</div>
+      )}
+      <FrameHeatmapOverlay analysis={analysis} cameraId={camera.camera_id} roadMask={roadMask} />
+    </div>
+  );
+}
+
+function DetectionOverlay({ analysis, cameraId }) {
+  const boxes = frameDetectionBoxes(analysis, cameraId);
+  return (
+    <div className="detection-overlay" aria-label={`当前识别到 ${boxes.length} 个目标`}>
+      {boxes.map((box, index) => (
+        <span
+          className="detection-box"
+          key={`${box.left}-${box.top}-${box.width}-${box.height}-${index}`}
+          style={{ left: `${box.left}%`, top: `${box.top}%`, width: `${box.width}%`, height: `${box.height}%` }}
+        >
+          <em>{box.className} {Math.round(box.confidence * 100)}%{box.plate ? ` · ${box.plate}` : ""}</em>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function AnalysisVideoView({ camera, status, analysis, streamVersion }) {
+  return (
+    <div className="analysis-video-preview" style={{ aspectRatio: `${status?.frame_width || 16} / ${status?.frame_height || 9}` }}>
+      <img src={rawCameraStreamUrl(API_BASE, camera.camera_id, streamVersion)} alt={`${camera.name} 实时视频`} />
+      <DetectionOverlay analysis={analysis} cameraId={camera.camera_id} />
+    </div>
+  );
+}
+
 function PreviewSlot({ slotIndex, cameraId, cameras, statuses, streamVersion, onChange, onSelect }) {
   const camera = cameras.find((item) => item.camera_id === cameraId) || cameras[0];
   const status = camera ? statuses[camera.camera_id] : null;
@@ -827,8 +833,9 @@ function App() {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem("strans_token") || "");
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ username: "admin", password: "admin123", captcha_code: "" });
+  const [authForm, setAuthForm] = useState(initialAuthForm);
   const [captcha, setCaptcha] = useState({ captcha_id: "", image: "" });
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [logs, setLogs] = useState(["系统已就绪，请启动摄像头或接入手机视频源"]);
   const [streamVersion, setStreamVersion] = useState(Date.now());
@@ -837,6 +844,7 @@ function App() {
   const [weather, setWeather] = useState(emptyWeather);
   const [roadModel, setRoadModel] = useState(null);
   const [roadHeatmap, setRoadHeatmap] = useState({ points: [] });
+  const [roadMask, setRoadMask] = useState(null);
   const [analysisMode, setAnalysisMode] = useState("traffic");
   const [reports, setReports] = useState([]);
   const [activeReportId, setActiveReportId] = useState(null);
@@ -849,7 +857,7 @@ function App() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [featureMessage, setFeatureMessage] = useState("");
   const [passwordForm, setPasswordForm] = useState({ old_password: "", new_password: "" });
-  const [cameraForm, setCameraForm] = useState({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+  const [cameraForm, setCameraForm] = useState({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "", heatmap_mode: "auto" });
   const [incidentNotes, setIncidentNotes] = useState({});
   const [resetPasswords, setResetPasswords] = useState({});
   const [schedulerState, setSchedulerState] = useState({ enabled: true, active: [], decisions: [] });
@@ -866,12 +874,8 @@ function App() {
 
   const selectedCamera = cameras.find((item) => item.camera_id === selectedCameraId) || cameras[0];
   const selectedStatus = selectedCamera ? statuses[selectedCamera.camera_id] : null;
+  const selectedHeatmapMode = resolveHeatmapMode(selectedCamera);
   const stats = analysis.traffic_stats || emptyAnalysis.traffic_stats;
-  const streamUrl = useMemo(
-    () => (selectedCamera ? `${API_BASE}/api/cameras/${selectedCamera.camera_id}/model-mjpeg?model_name=${selectedModelName}&task_mode=${analysisMode}&v=${streamVersion}` : ""),
-    [selectedCamera, selectedModelName, analysisMode, streamVersion],
-  );
-
   function addLog(message) {
     const time = new Date().toLocaleTimeString("zh-CN", { hour12: false });
     setLogs((prev) => [`${time}  ${message}`, ...prev].slice(0, 16));
@@ -896,14 +900,19 @@ function App() {
   }
 
   const loadCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/auth/captcha`);
-      if (!response.ok) throw new Error(String(response.status));
-      const data = await response.json();
+      const data = await fetchCaptchaWithRetry(async () => {
+        const response = await fetchWithTimeout(`${API_BASE}/api/auth/captcha`);
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
+      });
       setCaptcha(data);
       setAuthForm((prev) => ({ ...prev, captcha_code: "" }));
     } catch (error) {
       setAuthMessage(`验证码加载失败：${error.message}`);
+    } finally {
+      setCaptchaLoading(false);
     }
   }, []);
 
@@ -932,6 +941,32 @@ function App() {
       .then(setRoadModel)
       .catch((error) => addLog(`道路模型加载失败：${error.message}`));
   }, [authToken, currentUser?.id]);
+
+  useEffect(() => {
+    if (!authToken || !selectedCamera || selectedHeatmapMode !== "frame") {
+      setRoadMask(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadRoadMask = async () => {
+      try {
+        const response = await fetchWithTimeout(`${API_BASE}/api/cameras/${encodeURIComponent(selectedCamera.camera_id)}/road-mask`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const snapshot = await response.json();
+        if (!cancelled) setRoadMask(snapshot);
+      } catch {
+        if (!cancelled) setRoadMask(null);
+      }
+    };
+    loadRoadMask();
+    const timer = window.setInterval(loadRoadMask, 750);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [authToken, selectedCamera?.camera_id, selectedHeatmapMode]);
 
   useEffect(() => {
     if (!authToken || !currentUser || viewMode !== "reports") return;
@@ -1046,6 +1081,33 @@ function App() {
 
   usePolling(refresh, 1500);
 
+  useEffect(() => {
+    if (!authToken || !currentUser || !selectedCamera?.camera_id || !selectedStatus?.running) return undefined;
+    let cancelled = false;
+    let inFlight = false;
+    const inferLatestFrame = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const path = analysisMode === "road_anomaly"
+          ? `/api/road-anomaly/analyze/${selectedCamera.camera_id}?include_damage_model=true`
+          : `/api/algorithm/infer/${selectedCamera.camera_id}`;
+        const result = await requestJson(path, { method: "POST" });
+        if (!cancelled) setAnalysis(result);
+      } catch {
+        // The raw preview remains available while a model is warming up or reconnecting.
+      } finally {
+        inFlight = false;
+      }
+    };
+    inferLatestFrame();
+    const timer = window.setInterval(inferLatestFrame, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [authToken, currentUser, selectedCamera?.camera_id, selectedStatus?.running, analysisMode]);
+
   async function submitAuth(event) {
     event.preventDefault();
     setBusy(true);
@@ -1131,7 +1193,7 @@ function App() {
       });
       setSelectedCameraId(camera.camera_id);
       setStreamVersion(Date.now());
-      addLog(`接入手机视频：${phoneUrl}`);
+      addLog("已接入手机视频源");
       await refresh();
     } catch (error) {
       addLog(`手机视频接入失败：${error.message}`);
@@ -1498,11 +1560,12 @@ function App() {
       stream_url: camera.stream_url,
       location: camera.location,
       description: camera.description || "",
+      heatmap_mode: camera.heatmap_mode || "auto",
     });
   }
 
   function clearCameraForm() {
-    setCameraForm({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "" });
+    setCameraForm({ camera_id: "", name: "", type: "custom", stream_url: "", location: "", description: "", heatmap_mode: "auto" });
   }
 
   async function saveManagedCamera(event) {
@@ -1519,6 +1582,7 @@ function App() {
           stream_url: cameraForm.stream_url,
           location: cameraForm.location,
           description: cameraForm.description || null,
+          heatmap_mode: cameraForm.heatmap_mode,
         }),
       });
       setFeatureMessage(editing ? "摄像头配置已更新。" : "摄像头已添加并写入数据库。");
@@ -1786,7 +1850,7 @@ function App() {
     }
   }
 
-  const visibleCameras = cameras.slice(0, 12);
+  const visibleCameras = monitorCameraOptions(cameras);
   const selectedMultiCameras = visibleCameras.filter((camera) => (multiHeatmapCameraIds || []).includes(camera.camera_id));
   const algorithmState = dashboard?.algorithm;
   const algorithmReady = algorithmState?.status === "ready";
@@ -1837,7 +1901,7 @@ function App() {
                 className={cx(authMode === "login" && "active")}
                 onClick={() => {
                   setAuthMode("login");
-                  setAuthForm({ username: "admin", password: "admin123", captcha_code: "" });
+                  setAuthForm(initialAuthForm());
                   loadCaptcha();
                 }}
               >
@@ -1880,7 +1944,11 @@ function App() {
                 onChange={(event) => setAuthForm((prev) => ({ ...prev, captcha_code: event.target.value }))}
                 placeholder="输入右侧验证码"
               />
-              {captcha.image ? <img src={captcha.image} alt="验证码" onClick={loadCaptcha} /> : <button type="button" onClick={loadCaptcha}>刷新</button>}
+              {captchaLoading
+                ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 140, height: 44, background: "#eef7ff", border: "1px solid #bfd0df", borderRadius: 8, color: "#718196", fontSize: 12 }}>加载中…</span>
+                : captcha.image
+                  ? <img src={captcha.image} alt="验证码" onClick={loadCaptcha} />
+                  : <button type="button" onClick={loadCaptcha}>刷新</button>}
             </div>
             {authMessage && <p className="auth-message">{authMessage}</p>}
             <button type="submit" className="primary auth-submit" disabled={busy}>
@@ -1945,6 +2013,7 @@ function App() {
           {isAdmin && <button type="button" className={cx(viewMode === "cameras" && "active")} onClick={() => setViewMode("cameras")}><Camera size={15} />摄像头</button>}
           {isAdmin && <button type="button" className={cx(viewMode === "models" && "active")} onClick={() => setViewMode("models")}><ServerCog size={15} />模型配置</button>}
           {isAdmin && <button type="button" className={cx(viewMode === "scheduler" && "active")} onClick={() => setViewMode("scheduler")}><Activity size={15} />智能调度</button>}
+          {isAdmin && <a className="road-modeler-link" {...roadModelerLinkAttributes(import.meta.env.BASE_URL)}><Route size={15} />道路建模</a>}
           {isAdmin && <button type="button" className={cx(viewMode === "users" && "active")} onClick={() => setViewMode("users")}><Users size={15} />用户管理</button>}
           {isAdmin && <button type="button" className={cx(viewMode === "audit" && "active")} onClick={() => setViewMode("audit")}><FileText size={15} />审计日志</button>}
           <button type="button" className={cx(viewMode === "roadmodeler" && "active")} onClick={() => setViewMode("roadmodeler")}><Route size={15} />道路建模工具</button>
@@ -2257,13 +2326,19 @@ function App() {
                 <label htmlFor="managedCameraName">名称</label>
                 <input id="managedCameraName" required value={cameraForm.name} onChange={(event) => setCameraForm((previous) => ({ ...previous, name: event.target.value }))} />
                 <label htmlFor="managedCameraType">类型</label>
-                <select id="managedCameraType" value={cameraForm.type} onChange={(event) => setCameraForm((previous) => ({ ...previous, type: event.target.value }))}><option value="custom">自定义</option><option value="phone">手机</option><option value="esp32cam">ESP32-CAM</option><option value="usb">USB 摄像头</option><option value="sandtable">沙盘 RTSP</option></select>
+                <select id="managedCameraType" value={cameraForm.type} onChange={(event) => setCameraForm((previous) => ({ ...previous, type: event.target.value }))}>
+                  {CAMERA_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
                 <label htmlFor="managedCameraUrl">视频流地址</label>
                 <input id="managedCameraUrl" required value={cameraForm.stream_url} onChange={(event) => setCameraForm((previous) => ({ ...previous, stream_url: event.target.value }))} placeholder="RTSP、HTTP、文件路径或摄像头编号" />
                 <label htmlFor="managedCameraLocation">位置</label>
                 <input id="managedCameraLocation" required value={cameraForm.location} onChange={(event) => setCameraForm((previous) => ({ ...previous, location: event.target.value }))} />
                 <label htmlFor="managedCameraDescription">说明</label>
                 <textarea id="managedCameraDescription" value={cameraForm.description} onChange={(event) => setCameraForm((previous) => ({ ...previous, description: event.target.value }))} />
+                <label htmlFor="managedCameraHeatmap">热力图显示</label>
+                <select id="managedCameraHeatmap" value={cameraForm.heatmap_mode} onChange={(event) => setCameraForm((previous) => ({ ...previous, heatmap_mode: event.target.value }))}>
+                  <option value="auto">自动（沙盘道路 / 移动设备画面）</option><option value="road">道路映射</option><option value="frame">画面坐标</option><option value="off">关闭</option>
+                </select>
                 <div className="form-actions"><button type="submit" className="primary" disabled={busy}>保存配置</button>{cameraForm.camera_id && <button type="button" onClick={clearCameraForm}>取消编辑</button>}</div>
               </form>
               <div className="managed-camera-list">
@@ -2655,7 +2730,7 @@ function App() {
             )}
             <div className="video-stage">
               {selectedCamera && selectedStatus?.running ? (
-                <img src={streamUrl} alt={`${selectedCamera.name} 视频流`} />
+                <AnalysisVideoView camera={selectedCamera} status={selectedStatus} analysis={analysis} streamVersion={streamVersion} />
               ) : (
                 <div className="empty-video">
                   <Camera size={48} />
@@ -2687,19 +2762,27 @@ function App() {
 
         <aside className="right-column">
           {analysisMode === "traffic" ? <Panel
-            title="当前视角道路图"
+            title={selectedHeatmapMode === "frame" ? "手机画面道路热力图" : "当前视角拥堵图"}
             icon={<Flame size={18} />}
-            action={<button type="button" className="text-action" onClick={() => setHeatmapOpen(true)}>查看大图</button>}
+            action={
+              selectedHeatmapMode === "road" && <button type="button" className="text-action" onClick={() => setHeatmapOpen(true)}>
+                查看大图
+              </button>
+            }
           >
-            <div className="heatmap-view-toolbar">
-              <div className="heatmap-mode-switch" role="group" aria-label="道路图展示形式">
-                <button type="button" className={cx(heatmapDisplayMode === "heat" && "active")} onClick={() => setHeatmapDisplayMode("heat")}>拥堵热力</button>
-                <button type="button" className={cx(heatmapDisplayMode === "vehicles" && "active")} onClick={() => setHeatmapDisplayMode("vehicles")}>车辆红点</button>
-              </div>
-            </div>
-            <button type="button" className="heatmap-button" onClick={() => setHeatmapOpen(true)}>
-              <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} displayMode={heatmapDisplayMode} />
-            </button>
+            {selectedHeatmapMode === "off" ? <p className="empty-copy heatmap-disabled-copy">当前摄像头已关闭热力图显示。</p>
+              : selectedHeatmapMode === "frame" ? <FrameHeatmapView camera={selectedCamera} status={selectedStatus} analysis={analysis} roadMask={roadMask} />
+                : <>
+                  <div className="heatmap-view-toolbar">
+                    <div className="heatmap-mode-switch" role="group" aria-label="道路图展示形式">
+                      <button type="button" className={cx(heatmapDisplayMode === "heat" && "active")} onClick={() => setHeatmapDisplayMode("heat")}>拥堵热力</button>
+                      <button type="button" className={cx(heatmapDisplayMode === "vehicles" && "active")} onClick={() => setHeatmapDisplayMode("vehicles")}>车辆红点</button>
+                    </div>
+                  </div>
+                  <button type="button" className="heatmap-button" onClick={() => setHeatmapOpen(true)}>
+                    <HeatmapView analysis={analysis} roadModel={roadModel} roadHeatmap={roadHeatmap} cameraId={selectedCameraId} displayMode={heatmapDisplayMode} />
+                  </button>
+                </>}
           </Panel> : <Panel title="道路异常识别" icon={<AlertTriangle size={18} />} className="anomaly-mode-panel">
             <div className="anomaly-mode-copy">
               <strong>独立任务模式</strong>
@@ -2759,7 +2842,7 @@ function App() {
         </>
       )}
 
-      {heatmapOpen && (
+      {heatmapOpen && selectedHeatmapMode === "road" && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <section className="heatmap-modal">
             <header>

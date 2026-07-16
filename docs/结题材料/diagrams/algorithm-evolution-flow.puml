@@ -1,0 +1,24 @@
+@startuml
+!include theme.iuml
+title 核心算法演进路线图（按 Git 提交证据）
+
+rectangle "可行性验证\n019c0b4 / 67f045e\nYOLO 权重 + 单图 OCR" as P1 #EFF6FF
+rectangle "沙盘方案设计\n891e233 / d7ee902\nVisDrone + ByteTrack + 道路 ROI" as P2 #ECFDF5
+rectangle "核心链路落地\n6bff027\n检测/跟踪/OCR/道路/异常" as P3 #F0FDFA
+rectangle "车辆车牌稳定\n6218b6a\n多条件去重 + 多区域投票" as P4 #FFF7ED
+rectangle "道路语义增强\n6064d25 / 7869888\n多源热力 + SegFormer" as P5 #FDF4FF
+rectangle "资源与异常优化\n69425f7 / f87aa0c\n动态调度 + 多证据过滤" as P6 #FEF2F2
+rectangle "结题集成\n2ac0a05 / b0f3be2\n主线合并 + 工具与测试补齐" as P7 #F8FAFC
+
+P1 -right-> P2 : 技术可用→场景适配
+P2 -right-> P3 : 设计→实时主链路
+P3 -right-> P4 : 发现重框/OCR 波动
+P4 -down-> P5 : 像素结果→道路语义
+P5 -left-> P6 : 精度→性能与稳定性
+P6 -left-> P7 : 分支收敛与交付验证
+
+legend bottom
+  演进原则：先提高召回，再用道路约束、时序记忆和业务规则抑制误报；
+  最后把真实设备负载和数据闭环纳入算法运行。
+endlegend
+@enduml

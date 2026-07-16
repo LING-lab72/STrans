@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>道路逻辑建模工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="panel left">
+      <header>
+        <h1>道路逻辑建模工具</h1>
+        <p>道路、道路内节点、节点组、建筑物、摄像头格点 → JSON</p>
+      </header>
+      <section>
+        <h2>模式</h2>
+        <div class="mode-grid">
+          <button id="modeSelect" class="active" type="button">选择</button>
+          <button id="modeNode" type="button">端点</button>
+          <button id="modeGroup" type="button">节点组</button>
+          <button id="modeLane" type="button">车道</button>
+          <button id="modeBuilding" type="button">建筑物</button>
+          <button id="modeCamera" type="button">摄像头</button>
+          <button id="modeCameraPoint" type="button">标点</button>
+        </div>
+        <label>新增端点类型
+          <select id="nodeType"></select>
+        </label>
+        <div class="group-placement-options">
+          <label>组内节点数<input id="groupNodeCount" type="number" min="1" max="12" value="2"></label>
+          <label>节点间距<input id="groupSpacing" type="number" min="4" step="4" value="36"></label>
+          <label>截面角度<input id="groupAngle" type="number" step="5" value="90"></label>
+        </div>
+        <p id="status" class="hint">就绪</p>
+      </section>
+      <section>
+        <h2>显示</h2>
+        <div class="button-row">
+          <button id="toggleGrid" class="active" type="button">网格</button>
+          <button id="toggleSnap" class="active" type="button">吸附</button>
+          <button id="toggleNodes" class="active" type="button">端点</button>
+          <button id="toggleLabels" class="active" type="button">标签</button>
+        </div>
+        <label>网格步长
+          <input id="gridSize" type="number" min="5" step="5">
+        </label>
+      </section>
+      <section>
+        <h2>操作</h2>
+        <div class="button-row">
+          <button id="fitView" type="button">适配</button>
+          <button id="deleteSelected" class="danger" type="button">删除</button>
+        </div>
+        <button id="convertToGroup" type="button">选中端点转为节点组</button>
+        <div class="button-row">
+          <button id="refreshJson" type="button">刷新 JSON</button>
+          <button id="downloadJson" type="button">下载</button>
+        </div>
+        <label class="file-import">导入 JSON
+          <input id="importJsonFile" type="file" accept="application/json,.json">
+        </label>
+      </section>
+    </aside>
+
+    <main>
+      <canvas id="canvas" width="1200" height="800" aria-label="道路逻辑建模画布"></canvas>
+    </main>
+
+    <aside class="panel right">
+      <section>
+        <h2>统计</h2>
+        <div class="metrics">
+          <div><strong id="nodeCount">0</strong><span>端点</span></div>
+          <div><strong id="laneCount">0</strong><span>车道</span></div>
+          <div><strong id="groupCount">0</strong><span>节点组</span></div>
+          <div><strong id="buildingCount">0</strong><span>建筑物</span></div>
+          <div><strong id="cameraCount">0</strong><span>摄像头</span></div>
+        </div>
+      </section>
+      <section>
+        <h2>属性</h2>
+        <div id="properties" class="properties"></div>
+      </section>
+      <section>
+        <h2>摄像头画面标定</h2>
+        <div id="cameraImagePanel" class="camera-image-panel">
+          <div class="empty">选中摄像头后上传画面并点击标定点</div>
+        </div>
+      </section>
+      <section>
+        <h2>元素</h2>
+        <div id="entityList" class="entity-list"></div>
+      </section>
+      <section>
+        <h2>JSON（按需刷新）</h2>
+        <textarea id="jsonOutput" spellcheck="false"></textarea>
+      </section>
+    </aside>
+  </div>
+  <script src="src/geometry.js"></script>
+  <script src="src/model.js"></script>
+  <script src="src/renderer.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

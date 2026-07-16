@@ -1,0 +1,37 @@
+@startuml
+!include theme.iuml
+title 自适应模型调度状态图
+
+[*] --> Balanced : 默认启用
+[*] --> Manual : 调度关闭
+
+state Manual as "manual\n保持用户配置"
+state Balanced as "balanced\n默认平衡档"
+state Quality as "quality\n高分辨率/精度优先"
+state Anomaly as "anomaly\n小目标异常优先"
+state Realtime as "realtime\n时延优先"
+state Protect as "protect\n资源保护"
+
+Manual --> Balanced : 管理员启用调度
+Balanced --> Manual : 管理员关闭调度
+Balanced --> Quality : 静态图或 GPU 余量充足
+Balanced --> Anomaly : task_mode = road_anomaly
+Balanced --> Realtime : 最近推理时延偏高
+Balanced --> Protect : GPU/CPU/内存高压
+Quality --> Realtime : 推理变慢
+Quality --> Protect : 资源达到保护条件
+Anomaly --> Realtime : 实时性不足
+Anomaly --> Protect : 资源达到保护条件
+Realtime --> Balanced : 负载恢复且满足滞回时间
+Protect --> Balanced : 资源恢复且满足滞回时间
+Balanced --> Balanced : 1.5s 资源缓存\n8s profile 滞回
+
+note right of Protect
+  降低输入尺寸与频率，
+  必要时切换后备模型。
+end note
+note left of Quality
+  提高输入尺寸，保留
+  沙盘小目标识别能力。
+end note
+@enduml

@@ -1,0 +1,43 @@
+@startuml
+!include theme.iuml
+title 道路建模到实时交通分析流程图
+
+package "离线建模阶段" {
+  actor "算法/系统管理员" as Admin
+  component "道路建模 Canvas" as Canvas
+  component "geometry.js" as Geometry
+  component "model.js\nnormalize + buildLogic" as Model
+  component "renderer.js" as Renderer
+  artifact "road_logic_modeler.v1\nmodel + logic" as JSON
+  Admin -down-> Canvas : 节点组/车道/建筑物/摄像头
+  Canvas -left-> Geometry
+  Canvas -right-> Renderer
+  Canvas -down-> Model
+  Model -down-> JSON : 导出
+}
+
+package "审核与发布" {
+  component "Schema/引用完整性校验" as Validate
+  component "人工审核与版本留存" as Review
+  JSON -right-> Validate
+  Validate -down-> Review
+}
+
+package "实时运行阶段" {
+  component "RoadLogicService" as Road
+  component "RANSAC 单应矩阵" as Homography
+  component "车道/路口归属" as Assignment
+  component "速度/禁停/拥堵" as Traffic
+  component "道路热力图" as Heatmap
+  Review -right-> Road : 发布配置
+  Road -down-> Homography
+  Homography -down-> Assignment : 车辆道路接触点→世界坐标
+  Assignment -down-> Traffic
+  Traffic -down-> Heatmap
+}
+
+note bottom of Review
+  当前为人工发布；后续可演进为
+  草稿—校验—发布—回滚工作流。
+end note
+@enduml

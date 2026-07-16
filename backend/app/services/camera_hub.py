@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from app.schemas.video import CameraCreateRequest, CameraSource, CameraStatusItem, CameraUpdateRequest, VideoStatus
+from app.services.sqlite_utils import open_sqlite
 from app.services.video_stream import VideoStreamService
 
 
@@ -40,9 +41,7 @@ class CameraHub:
         self._load_custom_sources()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return open_sqlite(self.db_path)
 
     def _init_db(self) -> None:
         with self._connect() as conn:
@@ -55,15 +54,19 @@ class CameraHub:
                     stream_url TEXT NOT NULL,
                     location TEXT NOT NULL,
                     description TEXT,
+                    heatmap_mode TEXT NOT NULL DEFAULT 'auto',
                     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
                     updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
                 )
                 """
             )
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(camera_sources)").fetchall()}
+            if "heatmap_mode" not in columns:
+                conn.execute("ALTER TABLE camera_sources ADD COLUMN heatmap_mode TEXT NOT NULL DEFAULT 'auto'")
 
     def _load_custom_sources(self) -> None:
         with self._connect() as conn:
-            rows = conn.execute("SELECT camera_id, name, type, stream_url, location, description FROM camera_sources").fetchall()
+            rows = conn.execute("SELECT camera_id, name, type, stream_url, location, description, heatmap_mode FROM camera_sources").fetchall()
         for row in rows:
             source = CameraSource(**dict(row), status="offline")
             self._sources[source.camera_id] = source
@@ -73,14 +76,14 @@ class CameraHub:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO camera_sources (camera_id, name, type, stream_url, location, description)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO camera_sources (camera_id, name, type, stream_url, location, description, heatmap_mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(camera_id) DO UPDATE SET
                     name = excluded.name, type = excluded.type, stream_url = excluded.stream_url,
-                    location = excluded.location, description = excluded.description,
+                    location = excluded.location, description = excluded.description, heatmap_mode = excluded.heatmap_mode,
                     updated_at = datetime('now', 'localtime')
                 """,
-                (source.camera_id, source.name, source.type, source.stream_url, source.location, source.description),
+                (source.camera_id, source.name, source.type, source.stream_url, source.location, source.description, source.heatmap_mode),
             )
 
     def list_sources(self) -> list[CameraSource]:

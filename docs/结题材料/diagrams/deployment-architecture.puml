@@ -1,0 +1,56 @@
+@startuml
+!include theme.iuml
+title STrans 部署架构图
+top to bottom direction
+
+actor "普通用户/管理员" as User
+
+cloud "视频与外部数据" {
+  node "固定沙盘摄像头" as Camera
+  node "手机/USB/本地录像" as Mobile
+  node "天气/可选智能报告 API" as External
+}
+
+node "浏览器终端" as Browser {
+  artifact "React + Vite SPA" as React
+  artifact "道路建模静态页" as ModelerPage
+}
+
+node "Windows 应用主机" as Host {
+  component "FastAPI\nREST + MJPEG" as API
+  component "CameraHub / VideoStreamService" as Video
+  component "LocalModel / RoadAnomaly / RoadMask" as Vision
+  component "RoadLogic / Scheduler" as Traffic
+  component "Auth / Whitelist / Analysis / Report" as Business
+  database "SQLite" as DB
+  folder "模型权重" as Weights
+  folder "告警证据与导出" as Evidence
+  component "可选 localhost:8765\nRTSP 截帧桥接" as Bridge
+}
+
+node "NVIDIA GPU" as GPU {
+  component "CUDA 12.6\nYOLO / SegFormer" as CUDA
+}
+
+User -down-> React : HTTPS/HTTP
+React -down-> API : REST + MJPEG
+React --> ModelerPage : 管理员入口
+Camera --> Video : RTSP/MJPEG
+Mobile --> Video : HTTP/设备/文件
+Video --> API
+API --> Vision : JPEG 帧
+Vision -down-> GPU : 本地推理
+Weights --> Vision
+Vision --> Traffic : 检测/轨迹/异常
+Traffic --> Business : 交通状态/事件
+Business --> DB
+Business --> Evidence
+API --> External : 可选调用
+ModelerPage --> Bridge : 可选 RTSP 单帧
+ModelerPage --> Traffic : 经审核 JSON 配置
+
+note bottom of Bridge
+  只绑定 127.0.0.1，
+  无鉴权，不对局域网开放。
+end note
+@enduml

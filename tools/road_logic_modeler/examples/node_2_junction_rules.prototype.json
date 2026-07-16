@@ -1,0 +1,27 @@
+{
+  "nodeId": "node_2",
+  "cutback": 90,
+  "connections": [
+    {"id": "north_1_straight", "fromLaneId": "lane_6", "toLaneId": "lane_43"},
+    {"id": "north_2_straight", "fromLaneId": "lane_7", "toLaneId": "lane_44"},
+    {"id": "north_3_straight", "fromLaneId": "lane_8", "toLaneId": "lane_45"},
+    {"id": "north_right", "fromLaneId": "lane_6", "toLaneId": "lane_80"},
+    {"id": "north_left_1", "fromLaneId": "lane_7", "toLaneId": "lane_50"},
+    {"id": "north_left_2", "fromLaneId": "lane_8", "toLaneId": "lane_51"},
+
+    {"id": "south_1_straight", "fromLaneId": "lane_46", "toLaneId": "lane_97"},
+    {"id": "south_2_straight", "fromLaneId": "lane_47", "toLaneId": "lane_98"},
+    {"id": "south_left", "fromLaneId": "lane_46", "toLaneId": "lane_80"},
+    {"id": "south_right", "fromLaneId": "lane_47", "toLaneId": "lane_52"},
+
+    {"id": "east_1_straight", "fromLaneId": "lane_48", "toLaneId": "lane_81"},
+    {"id": "east_2_straight", "fromLaneId": "lane_49", "toLaneId": "lane_80"},
+    {"id": "east_right", "fromLaneId": "lane_48", "toLaneId": "lane_97"},
+    {"id": "east_left", "fromLaneId": "lane_49", "toLaneId": "lane_45"},
+
+    {"id": "west_1_straight", "fromLaneId": "lane_78", "toLaneId": "lane_52"},
+    {"id": "west_2_straight", "fromLaneId": "lane_79", "toLaneId": "lane_50"},
+    {"id": "west_right", "fromLaneId": "lane_78", "toLaneId": "lane_45"},
+    {"id": "west_left", "fromLaneId": "lane_79", "toLaneId": "lane_97"}
+  ]
+}

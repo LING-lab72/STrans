@@ -5,8 +5,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-CameraType = Literal["sandtable", "phone", "esp32cam", "usb", "custom"]
+CameraType = Literal["sandtable", "phone", "usb", "custom"]
 CameraStatus = Literal["online", "offline", "connecting", "error"]
+HeatmapMode = Literal["auto", "road", "frame", "off"]
 
 
 class VideoStartRequest(BaseModel):
@@ -22,6 +23,7 @@ class CameraSource(BaseModel):
     stream_url: str
     location: str
     description: str | None = None
+    heatmap_mode: HeatmapMode = "auto"
     status: CameraStatus = "offline"
     selected: bool = False
 
@@ -32,6 +34,7 @@ class CameraCreateRequest(BaseModel):
     stream_url: str = Field(..., min_length=1, max_length=500)
     location: str = Field(..., min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=200)
+    heatmap_mode: HeatmapMode = "auto"
 
 
 class CameraUpdateRequest(BaseModel):
@@ -40,6 +43,7 @@ class CameraUpdateRequest(BaseModel):
     stream_url: str | None = Field(default=None, min_length=1, max_length=500)
     location: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=200)
+    heatmap_mode: HeatmapMode | None = None
 
 
 class VideoStatus(BaseModel):
@@ -57,6 +61,19 @@ class VideoStatus(BaseModel):
 class CameraStatusItem(BaseModel):
     camera_id: str
     status: VideoStatus
+
+
+class RoadMaskSnapshot(BaseModel):
+    camera_id: str
+    status: Literal["ready", "unavailable"]
+    width: int | None = None
+    height: int | None = None
+    mask_data_url: str | None = None
+    schematic_data_url: str | None = None
+    generated_at: str | None = None
+    inference_ms: float | None = None
+    cached: bool = False
+    error: str | None = None
 
 
 class StartAllRequest(BaseModel):

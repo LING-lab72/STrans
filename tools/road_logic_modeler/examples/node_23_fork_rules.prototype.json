@@ -1,0 +1,9 @@
+{
+  "nodeId": "node_23",
+  "cutback": 64,
+  "connections": [
+    {"id": "east_to_west_1", "fromLaneId": "lane_80", "toLaneId": "lane_74"},
+    {"id": "east_to_west_2", "fromLaneId": "lane_81", "toLaneId": "lane_75"},
+    {"id": "east_to_north", "fromLaneId": "lane_80", "toLaneId": "lane_82"}
+  ]
+}

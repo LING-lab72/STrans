@@ -1,0 +1,253 @@
+:root {
+  --bg: #111820;
+  --panel: #1f2a34;
+  --panel-2: #2d3a45;
+  --line: #3b4a55;
+  --text: #edf3f7;
+  --muted: #9aa8b3;
+  --active: #22d3ee;
+  --danger: #fb7185;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 292px minmax(520px, 1fr) 352px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.panel {
+  background: var(--panel);
+  overflow-y: auto;
+}
+
+.left { border-right: 1px solid var(--line); }
+.right { border-left: 1px solid var(--line); }
+
+main { min-width: 0; min-height: 0; }
+canvas { display: block; width: 100%; height: 100vh; }
+
+header, section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1, h2, p { margin: 0; }
+h1 { font-size: 17px; }
+h2 {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+p, .hint {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+button, input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+}
+
+button {
+  min-height: 34px;
+  cursor: pointer;
+}
+
+button:hover { border-color: #5d7180; }
+button.active {
+  border-color: var(--active);
+  color: var(--active);
+  background: rgba(34, 211, 238, 0.12);
+  font-weight: 600;
+}
+button.danger {
+  color: var(--danger);
+  border-color: rgba(251, 113, 133, 0.4);
+}
+
+label {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input, select { height: 32px; padding: 0 9px; }
+input[type="file"] {
+  height: auto;
+  padding: 7px 9px;
+}
+textarea {
+  min-height: 220px;
+  padding: 10px;
+  resize: vertical;
+  font: 12px Consolas, "Cascadia Code", monospace;
+  line-height: 1.45;
+}
+
+.mode-grid, .button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.button-row { margin-bottom: 7px; }
+
+.group-placement-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.group-placement-options label {
+  min-width: 0;
+}
+
+.file-import {
+  margin-top: 0;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.metrics div {
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.metrics strong { display: block; color: var(--active); font-size: 17px; }
+.metrics span { color: var(--muted); font-size: 11px; }
+
+.properties { display: grid; gap: 7px; }
+.empty {
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+.properties textarea { min-height: 86px; }
+
+.entity-list {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.entity-list button {
+  height: auto;
+  min-height: 0;
+  padding: 8px 10px;
+  text-align: left;
+}
+.entity-list button.selected { border-color: var(--active); background: rgba(34, 211, 238, 0.12); }
+.entity-title { display: block; font-weight: 600; font-size: 13px; }
+.entity-meta { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+.camera-image-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.camera-image-panel canvas {
+  width: 100%;
+  height: auto;
+  min-height: 180px;
+  max-height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #101820;
+}
+
+.camera-image-panel .mini-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.camera-point-list {
+  display: grid;
+  gap: 5px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.camera-point-list button {
+  height: auto;
+  min-height: 0;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.correspondence-props {
+  display: grid;
+  gap: 7px;
+  margin-top: 7px;
+}
+.correspondence-props .empty {
+  padding: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 12, 18, 0.97);
+}
+
+.zoom-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.zoom-toolbar .zoom-status {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.zoom-toolbar button {
+  width: auto;
+  min-width: 72px;
+}
+
+.zoom-overlay canvas {
+  flex: 1;
+  min-height: 0;
+  cursor: crosshair;
+}

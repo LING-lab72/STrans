@@ -13,6 +13,20 @@ import cv2
 STATIC_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
+def safe_source_label(source: str | None) -> str | None:
+    if source is None or source.isdigit():
+        return source
+    return "configured video source"
+
+
+def redact_stream_error(message: str | None, source: str | None) -> str | None:
+    if not message:
+        return message
+    if not source:
+        return message
+    return message.replace(source, safe_source_label(source) or "video source")
+
+
 @dataclass
 class VideoSnapshot:
     running: bool = False
@@ -110,7 +124,10 @@ class VideoStreamService:
             ):
                 self._snapshot.connected = False
                 self._snapshot.last_error = "Video stream stalled: no valid frame received for 3 seconds."
-            return VideoSnapshot(**self._snapshot.__dict__)
+            snapshot = VideoSnapshot(**self._snapshot.__dict__)
+            snapshot.source = safe_source_label(snapshot.source)
+            snapshot.last_error = redact_stream_error(snapshot.last_error, self._snapshot.source)
+            return snapshot
 
     def latest_jpeg(self) -> bytes | None:
         with self._lock:
@@ -179,7 +196,7 @@ class VideoStreamService:
                     if generation == self._generation:
                         self._snapshot.running = False
                         self._snapshot.connected = False
-                        self._snapshot.last_error = f"Cannot decode image source: {source}"
+                        self._snapshot.last_error = f"Cannot decode image source: {safe_source_label(source)}"
                 return
             encoded, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
             if not encoded:
@@ -218,7 +235,7 @@ class VideoStreamService:
                 with self._lock:
                     if generation == self._generation:
                         self._snapshot.connected = False
-                        self._snapshot.last_error = f"Cannot open video source: {source}"
+                        self._snapshot.last_error = f"Cannot open video source: {safe_source_label(source)}"
                 cap.release()
                 if is_file_source:
                     break

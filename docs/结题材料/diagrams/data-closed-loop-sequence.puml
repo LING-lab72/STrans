@@ -1,0 +1,40 @@
+@startuml
+!include theme.iuml
+title 识别结果、告警证据与管理闭环时序图
+
+participant "视觉/道路算法" as Algo
+participant "FastAPI 编排层" as API
+participant "AnalysisStore" as Store
+database "SQLite" as DB
+participant "证据目录\n<<filesystem>>" as Evidence
+participant "React 功能中心" as Web
+actor "管理员" as Admin
+participant "IntelligenceReport" as Report
+
+Algo -> API : AnalysisResult + 事件候选 + 标注帧
+API -> Store : 周期保存分析结果
+Store -> DB : analysis_records / incidents
+opt 事件含证据
+  Store -> Evidence : 原始帧 + 标注帧 + JSON
+  Store -> Evidence : SHA-256 manifest
+  Store -> DB : 证据路径与哈希
+end
+Web -> API : 查询历史/告警/证据
+API -> Store : 筛选、分页、导出
+Store --> Web : 记录、事件和证据元数据
+Admin -> Web : 处置告警并填写备注
+Web -> API : 更新状态/处理人/备注
+API -> Store : 持久化处置结果
+Store -> DB : 写入处置结果
+opt 生成智能报告
+  Web -> API : 报告配置与生成请求
+  API -> Report : 当前态势 + 历史摘要 + 天气
+  Report --> API : 报告正文
+  API -> DB : 归档报告与审计
+end
+
+note over API,Store
+  已知改进项：按相机+类型+区域
+  增加事件冷却和生命周期合并。
+end note
+@enduml

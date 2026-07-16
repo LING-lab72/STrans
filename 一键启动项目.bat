@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 
-set "PROJECT_DIR=D:\zuoye\TrafficVisionAnalysis"
+for %%I in ("%~dp0.") do set "PROJECT_DIR=%%~fI"
 set "BACKEND_DIR=%PROJECT_DIR%\backend"
 set "FRONTEND_DIR=%PROJECT_DIR%\frontend"
 set "FRONTEND_URL=http://localhost:5173"
@@ -23,6 +23,13 @@ if not exist "%BACKEND_DIR%\app\main.py" (
 
 if not exist "%FRONTEND_DIR%\package.json" (
   echo [ERROR] Frontend not found: %FRONTEND_DIR%
+  pause
+  exit /b 1
+)
+
+if not exist "%BACKEND_DIR%\data\traffic_analysis.db" if "%STRANS_ADMIN_PASSWORD%"=="" (
+  echo [ERROR] First boot requires STRANS_ADMIN_PASSWORD with at least 12 characters.
+  echo Run this starter from a PowerShell session where the variable is set.
   pause
   exit /b 1
 )

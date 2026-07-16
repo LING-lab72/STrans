@@ -137,7 +137,7 @@ def generate_technical_architecture() -> Path:
         "data": (3260, 300, 4200, 820),
         "front": (900, 1250, 3400, 1870),
     }
-    draw_box(draw, boxes["device"], "设备采集层", ["手机 IP Webcam：HTTP MJPEG / RTSP", "ESP32-CAM：HTTP Stream", "本地沙盘视频：MP4 文件"], "#F8FBFF", "#2563EB", "#DBEAFE")
+    draw_box(draw, boxes["device"], "设备采集层", ["手机 IP Webcam：HTTP MJPEG / RTSP", "网络摄像头：RTSP / MJPEG", "本地沙盘视频：MP4 文件"], "#F8FBFF", "#2563EB", "#DBEAFE")
     draw_box(draw, boxes["edge"], "边缘服务层（笔记本）", ["FastAPI 后端服务", "VideoStreamService：OpenCV 拉流 / MJPEG 转发", "DashboardState：实时状态聚合", "模型与参数管理：阈值 / 模型切换 / Demo 模式"], "#F7FEFF", "#0891B2", "#CFFAFE")
     draw_box(draw, boxes["algo"], "算法推理层", ["YOLOv11s-visdrone：车辆 / 障碍物基础检测", "ByteTrack：多目标跟踪", "HyperLPR3 / 电子 ID：车牌与身份识别", "S2M：道路未知异物分割增强", "规则引擎：拥堵 / 禁停 / 闸机决策"], "#F8FFF9", "#16A34A", "#DCFCE7")
     draw_box(draw, boxes["data"], "数据持久层", ["SQLite / JSONL", "设备数据、交通统计", "事件告警、通行记录", "模型配置、白名单信息"], "#FFFBEB", "#D97706", "#FEF3C7")
@@ -167,7 +167,7 @@ def generate_functional_architecture() -> Path:
         ("规则决策层", ["禁停区域告警", "道路异常告警", "闸机白名单决策", "事件等级判定", "验收演示流程"], "#FEF2F2", "#DC2626"),
         ("交通分析层", ["车流量统计", "车速估计", "拥堵等级判定", "车流密度热力图", "历史趋势统计"], "#F0FDF4", "#16A34A"),
         ("视觉感知层", ["YOLOv11 车辆检测", "ByteTrack 车辆跟踪", "车牌 / 电子 ID 识别", "障碍物识别", "S2M 未知异物分割增强"], "#EFF6FF", "#2563EB"),
-        ("视频接入层", ["接入手机视频流", "接入 ESP32-CAM 视频流", "接入本地沙盘视频段", "视频状态监测与重连", "图像预处理：缩放 / ROI / 增强"], "#ECFEFF", "#0891B2"),
+        ("视频接入层", ["接入手机视频流", "接入 RTSP/MJPEG 网络摄像头", "接入本地沙盘视频段", "视频状态监测与重连", "图像预处理：缩放 / ROI / 增强"], "#ECFEFF", "#0891B2"),
     ]
     left_x, mid_x, right_x, w, h = 120, 1450, 2780, 1200, 430
     positions = [
@@ -372,7 +372,7 @@ def build_requirement_doc(use_case_img: Path) -> Path:
     doc = setup_doc("云边端协同智慧交通视觉感知系统", "需求分析报告 V1.0")
     add_kv_table(doc, [
         ("项目场景", "校园 704 智慧交通沙盘"),
-        ("系统形态", "手机/ESP32-CAM/本地视频采集 + 笔记本边缘服务 + 算法推理 + Web 大屏展示"),
+        ("系统形态", "手机/网络摄像头/本地视频采集 + 笔记本分析服务 + 算法推理 + Web 大屏展示"),
         ("当前版本重点", "视频接入、浅色沙盘大屏、YOLOv11 检测、ByteTrack 跟踪预留、S2M 障碍物增强方案"),
     ])
     doc.add_heading("1. 项目目标", level=1)
@@ -385,7 +385,7 @@ def build_requirement_doc(use_case_img: Path) -> Path:
     ], [4, 12])
     doc.add_heading("3. 功能需求概览", level=1)
     add_table(doc, ["编号", "功能", "优先级", "说明"], [
-        ["F01", "视频流接入", "P0", "支持手机 IP Webcam、ESP32-CAM、本地视频段和电脑摄像头。"],
+        ["F01", "视频流接入", "P0", "支持手机 IP Webcam、RTSP/MJPEG 网络摄像头、本地视频段和电脑摄像头。"],
         ["F02", "车辆检测与跟踪", "P0", "以 YOLOv11 识别车辆，ByteTrack 维护车辆 ID。"],
         ["F09", "障碍物识别", "P1", "基础模式复用 YOLOv11 检测结果，S2M 作为未知异物分割增强模块。"],
         ["F10", "车流密度热力图", "P1", "基于车辆位置生成拥堵热力与热点区域。"],
@@ -430,7 +430,7 @@ def build_design_doc(tech_img: Path, func_img: Path, er_img: Path) -> Path:
         ("算法实现", "YOLOv11s-visdrone、ByteTrack、HyperLPR3、S2M 增强模块"),
     ])
     doc.add_heading("1. 设计目标与原则", level=1)
-    doc.add_paragraph("系统采用云边端协同设计，以笔记本作为边缘服务器，支持手机、ESP32-CAM、本地视频段等多种视频源接入。设计重点是保证演示闭环稳定、接口清晰、算法可替换、前端展示清楚。")
+    doc.add_paragraph("系统采用分层视频分析设计，以笔记本作为分析服务器，支持手机、RTSP/MJPEG 网络摄像头、本地视频段等多种视频源接入。设计重点是保证演示闭环稳定、接口清晰、算法可替换、前端展示清楚。")
     add_bullets(doc, [
         "模块解耦：前端、后端、算法三部分独立开发，通过 REST API、MJPEG 视频流和算法 HTTP 接口通信。",
         "演示优先：保留本地视频和 Demo 模式，降低现场网络不稳定对验收的影响。",

@@ -11,21 +11,26 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from app.services.sqlite_utils import open_sqlite
+
 
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("STRANS_ADMIN_PASSWORD", "admin123")
+ADMIN_PASSWORD = os.getenv("STRANS_ADMIN_PASSWORD")
 
 
 class AuthStore:
-    def __init__(self, db_path: str | Path = "data/traffic_analysis.db") -> None:
+    def __init__(
+        self,
+        db_path: str | Path = "data/traffic_analysis.db",
+        admin_password: str | None = ADMIN_PASSWORD,
+    ) -> None:
         self.db_path = Path(db_path)
+        self.admin_password = admin_password
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return open_sqlite(self.db_path)
 
     def _init_db(self) -> None:
         with self._connect() as conn:
@@ -72,7 +77,9 @@ class AuthStore:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at DESC)")
             if self.get_user_by_username(ADMIN_USERNAME) is None:
-                self.create_user(ADMIN_USERNAME, ADMIN_PASSWORD, role="admin")
+                if not self.admin_password or len(self.admin_password) < 12:
+                    raise RuntimeError("首次启动必须设置至少 12 位的 STRANS_ADMIN_PASSWORD")
+                self.create_user(ADMIN_USERNAME, self.admin_password, role="admin")
 
     def _hash_password(self, password: str, salt: str | None = None) -> str:
         salt = salt or secrets.token_hex(16)
